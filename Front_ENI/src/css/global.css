@@ -3235,5 +3235,6 @@ footer a:hover {
   /* Ajuste del contenido principal por header fijo */
   .admin-main {
     margin-top: 140px;
+    padding: 2rem;
   }
 }

@@ -57,27 +57,25 @@ export default function CursosDisponibles() {
       if (isAdmin) {
         data = await GetAllCourses();
       } else if (u && u.areaId) {
-        // Intentar endpoint por área; si falla, traer todos y luego filtrar.
+        // Intentar endpoint por área; si falla, traer todos y luego filtrar localmente.
         try {
           data = await GetCoursesByArea(u.areaId);
         } catch (err) {
           console.warn('GetCoursesByArea falló, usando GetAllCourses como fallback:', err);
           data = await GetAllCourses();
-        }
-
-        // Asegurar filtrado client-side para evitar que cursos de otras áreas aparezcan
-        // (maneja diferencias de nombres de campo y tipos: areaId, area_id, area)
-        if (Array.isArray(data)) {
-          const areaStr = String(u.areaId);
-          data = data.filter((c) => {
-            return (
-              String(c.areaId || '') === areaStr ||
-              String(c.area_id || '') === areaStr ||
-              String(c.area || '') === areaStr
-            );
-          });
-        } else {
-          data = [];
+          // Solo en el fallback con GetAllCourses filtramos por área en el cliente.
+          if (Array.isArray(data)) {
+            const areaStr = String(u.areaId);
+            data = data.filter((c) => {
+              return (
+                String(c.areaId || '') === areaStr ||
+                String(c.area_id || '') === areaStr ||
+                String(c.area || '') === areaStr
+              );
+            });
+          } else {
+            data = [];
+          }
         }
       } else {
         // fallback: intentar obtener todos

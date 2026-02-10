@@ -54,6 +54,17 @@ export default function Administrador() {
             </h2>
           </div>
 
+          <button
+  className="menu-toggle"
+  onClick={() =>
+    document.querySelector(".header-buttons")
+      .classList.toggle("active")
+  }
+>
+  ☰
+</button>
+
+
           <div className="header-buttons">
             <button className="btn-anim" onClick={() => navigate("/register")}>
               <div className="btn-icon">

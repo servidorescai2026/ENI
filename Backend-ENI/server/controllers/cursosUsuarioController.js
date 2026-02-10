@@ -7,8 +7,8 @@ exports.getCursosForUser = async (req, res) => {
   const usuarioId = parseInt(req.params.usuarioId, 10);
   if (isNaN(usuarioId)) return res.status(400).json({ error: 'usuarioId inválido' });
 
-  // Allow users to request their own cursos, or admins to request any
-  if (req.usuario && req.usuario.id !== usuarioId && req.usuario.rol !== 'admin') {
+  // Allow users to request their own cursos, or Administradors to request any
+  if (req.usuario && req.usuario.id !== usuarioId && req.usuario.rol !== 'Administrador') {
     return res.status(403).json({ error: 'No autorizado' });
   }
 

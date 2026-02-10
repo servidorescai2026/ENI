@@ -1,5 +1,5 @@
 async function GetAllUsers() {
-    const response = await fetch('http://127.0.0.1:8000/api/Usuarios', {
+    const response = await fetch('http://127.0.0.1:3000/api/usuarios', {
         method: 'GET',
         headers: {
             "Content-Type": "application/json",

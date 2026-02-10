@@ -14,6 +14,7 @@ import VerificarMisCursos from "./VerificarMisCursos";
 import EnviarNotificacionPorArea from "./notificaciones";
 import MisNotificaciones from "./MisNotificaciones";
 import SubirEvidencias from "./SubirEvidencias";
+import Reportes from "./Reportes";
 import "./css/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(

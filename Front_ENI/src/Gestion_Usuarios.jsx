@@ -6,6 +6,8 @@ export default function GestionUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [filtro, setFiltro] = useState("");
   const [loading, setLoading] = useState(true);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const usuariosPorPagina = 10;
 
   const API_URL = "http://127.0.0.1:3000/api/usuarios";
 
@@ -59,7 +61,15 @@ export default function GestionUsuarios() {
       .includes(filtro.toLowerCase())
   );
 
-  if (loading) return <p>Cargando...</p>;
+  // Resetear página cuando cambia el filtro
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtro]);
+
+  const totalPaginas = Math.ceil(usuariosFiltrados.length / usuariosPorPagina);
+  const usuariosPaginados = usuariosFiltrados.slice((paginaActual - 1) * usuariosPorPagina, paginaActual * usuariosPorPagina);
+
+  if (loading) return <p>Cargando...⏳</p>;
 
   return (
     <div className="admin-container">
@@ -71,7 +81,7 @@ export default function GestionUsuarios() {
 
       <input
         type="text"
-        placeholder="Buscar..."
+        placeholder="Buscar...🕵️"
         value={filtro}
         onChange={(e) => setFiltro(e.target.value)}
       />
@@ -86,8 +96,8 @@ export default function GestionUsuarios() {
           </tr>
         </thead>
         <tbody>
-          {usuariosFiltrados.length > 0 ? (
-            usuariosFiltrados.map((u) => (
+          {usuariosPaginados.length > 0 ? (
+            usuariosPaginados.map((u) => (
               <tr key={u.id}>
                 <td>{u.nombre} {u.apellido}</td>
                 <td>{u.email}</td>
@@ -103,7 +113,27 @@ export default function GestionUsuarios() {
         </tbody>
       </table>
 
-     
+      {totalPaginas > 1 && (
+        <div className="paginacion">
+          <button
+            onClick={() => setPaginaActual(paginaActual - 1)}
+            disabled={paginaActual === 1}
+            className="btn-paginacion"
+          >
+            Anterior
+          </button>
+          <span className="pagina-info">
+            Página {paginaActual} de {totalPaginas}
+          </span>
+          <button
+            onClick={() => setPaginaActual(paginaActual + 1)}
+            disabled={paginaActual === totalPaginas}
+            className="btn-paginacion"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
     </div>
   );
 }

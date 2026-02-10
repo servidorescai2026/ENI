@@ -1,5 +1,7 @@
+import authFetch from "../../utils/authFetch";
+
 async function GetAllUsers() {
-    const response = await fetch('http://127.0.0.1:8000/api/Usuarios', {
+    const response = await authFetch('http://127.0.0.1:8000/api/Usuarios', {
         method: 'GET',
         headers: {
             "Content-Type": "application/json",

@@ -1,3 +1,4 @@
+import authFetch from "../../utils/authFetch";
 async function GetUserEnrollments() {
     const token = localStorage.getItem("token");
 
@@ -9,7 +10,7 @@ async function GetUserEnrollments() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await fetch('http://localhost:3000/api/inscripciones/usuario', {
+        const response = await authFetch('http://localhost:3000/api/inscripciones/usuario', {
             method: 'GET',
             headers: {
                 "Content-Type": "application/json",
@@ -26,7 +27,7 @@ async function GetUserEnrollments() {
             try {
                 errorText = await response.text();
             } catch (e) {
-                errorText = "Error desconocido del servidor";
+                errorText = `Error desconocido del servidor ${e}`;
             }
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }

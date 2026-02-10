@@ -8,9 +8,10 @@ const verifyToken = (req, res, next) => {
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res
-      .status(401)
-      .json({ mensaje: "Acceso denegado. Token no proporcionado." });
+    return res.status(401).json({
+      mensaje: "Token no proporcionado",
+      codigo: "NO_TOKEN"
+    });
   }
 
   try {
@@ -18,8 +19,19 @@ const verifyToken = (req, res, next) => {
     req.usuario = decoded;
     next();
   } catch (error) {
-    res.status(403).json({ mensaje: "Token inválido o expirado" });
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        mensaje: "Tu sesión ha expirado",
+        codigo: "TOKEN_EXPIRED"
+      });
+    }
+
+    return res.status(401).json({
+      mensaje: "Token inválido",
+      codigo: "INVALID_TOKEN"
+    });
   }
 };
 
 export default verifyToken;
+

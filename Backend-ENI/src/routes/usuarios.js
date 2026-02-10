@@ -161,6 +161,22 @@ router.post("/login", verifyCaptcha, async (req, res) => {
 });
 
 
+router.get("/", verifyToken, async (req, res) => {
+  try {
+    if (req.usuario.rol !== "Administrador") {
+      return res.status(403).json({ mensaje: "No tienes permiso para ver todos los usuarios" });
+    }
+
+    const usuarios = await Usuario.findAll({
+      attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"],
+    });
+
+    res.json(usuarios);
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al obtener usuarios", error: error.message });
+  }
+});
+
 router.get("/perfil", verifyToken, async (req, res) => {
   const usuario = await Usuario.findByPk(req.usuario.id, {
     attributes: ["id", "nombre", "apellido", "email", "rol", "categoria"],

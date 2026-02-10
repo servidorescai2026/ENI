@@ -172,6 +172,7 @@ footer a:hover {
   --bg: #0b102f;
 }
 
+
 .principal-page {
   min-height: 100vh;
   display: flex;
@@ -908,6 +909,61 @@ footer a:hover {
   background: rgba(13, 26, 51, 0.8);
   color: #9ab6ff;
   backdrop-filter: blur(5px);
+}
+
+/* Estilos para tabla de usuarios en gestión */
+.usuarios-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.usuarios-table th,
+.usuarios-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.usuarios-table th {
+  background: rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+.usuarios-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.usuarios-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Botón volver al panel */
+.btn-volver-panel {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.btn-volver-panel:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 /* ========== Notificaciones por área ========== */
@@ -3031,6 +3087,22 @@ footer a:hover {
   box-shadow: 0 6px 20px rgba(156, 39, 176, 0.4);
 }
 
+/* Estilos para badges de roles */
+.categoria-administrador {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: #fff;
+}
+
+.categoria-formador {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: #fff;
+}
+
+.categoria-estudiante {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: #fff;
+}
+
 /* Responsive para gestión de cursos */
 @media (max-width: 768px) {
   .gestion-cursos-main {
@@ -3157,5 +3229,425 @@ footer a:hover {
     flex-direction: column;
     text-align: center;
     gap: 0.5rem;
+  }
+}
+
+/* ========== Reportes ========== */
+.reportes-content {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.estadisticas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.estadistica-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.estadistica-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.estadistica-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.estadistica-info h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.estadistica-info p {
+  color: #c3d0ff;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filtros-container {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filtro-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filtro-group label {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.filtro-select {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filtro-select:focus {
+  outline: none;
+  border-color: #2196f3;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.reportes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.reporte-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 15px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.reporte-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.reporte-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.reporte-header h4 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  flex: 1;
+}
+
+.estado-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.estado-badge.completado {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: #fff;
+}
+
+.estado-badge.generando {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: #fff;
+}
+
+.reporte-info p {
+  margin: 0.5rem 0;
+  color: #e1e7ff;
+  font-size: 0.9rem;
+}
+
+.reporte-info strong {
+  color: #fff;
+}
+
+.reporte-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.btn-accion {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-accion.ver {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: #fff;
+}
+
+.btn-accion.ver:hover {
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  transform: translateY(-2px);
+}
+
+.btn-accion.descargar {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: #fff;
+}
+
+.btn-accion.descargar:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-2px);
+}
+
+.btn-accion.descargar:disabled {
+  background: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(26, 35, 126, 0.2);
+}
+
+.modal-header h3 {
+  color: #1a237e;
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(244, 67, 54, 0.1);
+  color: #d32f2f;
+}
+
+.reporte-detalles h4 {
+  color: #1a237e;
+  margin-bottom: 1rem;
+  font-size: 1.4rem;
+}
+
+.detalles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detalle-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.detalle-item strong {
+  color: #1a237e;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detalle-item span {
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.datos-reporte {
+  margin-bottom: 1.5rem;
+}
+
+.datos-reporte h5 {
+  color: #1a237e;
+  margin-bottom: 0.8rem;
+  font-size: 1.1rem;
+}
+
+.datos-json {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(26, 35, 126, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #333;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+/* Responsive para reportes */
+@media (max-width: 768px) {
+  .reportes-content {
+    padding: 1rem;
+  }
+
+  .estadisticas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reportes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reporte-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .reporte-actions {
+    flex-direction: column;
+  }
+
+  .btn-accion {
+    width: 100%;
+  }
+
+  .detalles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+}
+
+/* ========== Paginación ========== */
+.paginacion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem;
+}
+
+.btn-paginacion {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.btn-paginacion:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+}
+
+.btn-paginacion:disabled {
+  background: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pagina-info {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive para paginación */
+@media (max-width: 768px) {
+  .paginacion {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .btn-paginacion {
+    width: 100%;
+    max-width: 200px;
+  }
+
+  .pagina-info {
+    order: -1;
   }
 }

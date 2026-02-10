@@ -10,45 +10,8 @@ export default function Reportes() {
   const [filtroFecha, setFiltroFecha] = useState("todos");
   const [datosEstadisticas, setDatosEstadisticas] = useState({});
 
-  // Datos de ejemplo para reportes
-  const reportesEjemplo = [
-    { 
-      id: 1, 
-      titulo: "Reporte de Actividad Mensual", 
-      tipo: "Actividad", 
-      fecha: "2024-12-01", 
-      estado: "Completado",
-      descargas: 45,
-      datos: { usuariosNuevos: 15, actividades: 234, ingresos: 12500 }
-    },
-    { 
-      id: 2, 
-      titulo: "Análisis de Usuarios", 
-      tipo: "Usuarios", 
-      fecha: "2024-11-28", 
-      estado: "Completado",
-      descargas: 32,
-      datos: { totalUsuarios: 156, activos: 142, inactivos: 14 }
-    },
-    { 
-      id: 3, 
-      titulo: "Reporte Financiero Q4", 
-      tipo: "Financiero", 
-      fecha: "2024-12-05", 
-      estado: "Generando",
-      descargas: 0,
-      datos: { ingresos: 45000, gastos: 32000, ganancia: 13000 }
-    },
-    { 
-      id: 4, 
-      titulo: "Auditoría de Seguridad", 
-      tipo: "Seguridad", 
-      fecha: "2024-11-20", 
-      estado: "Completado",
-      descargas: 28,
-      datos: { intentosFallidos: 12, accesosExitosos: 1245, alertas: 3 }
-    }
-  ];
+  
+ 
 
   // Función de verificación de autenticación
   const verificarAutenticacion = useCallback(() => {
@@ -82,11 +45,42 @@ export default function Reportes() {
     if (autenticado) {
       // Simular carga de reportes
       setTimeout(() => {
-        setReportes(reportesEjemplo);
-        calcularEstadisticas(reportesEjemplo);
+        setReportes([
+          {
+            id: 1,
+            titulo: "Reporte de Usuarios Activos",
+            tipo: "Automático",
+            fecha: "2023-10-01",
+            estado: "Completado",
+            descargas: 3,
+            datos: { metricas: "Usuarios activos: 150, Nuevos registros: 20" }
+          },
+          {
+            id: 2,
+            titulo: "Reporte de Cursos Disponibles",
+            tipo: "Manual",
+            fecha: "2023-09-15",
+            estado: "Completado",
+            descargas: 7,
+            datos: { metricas: "Cursos totales: 25, Áreas: 5" }
+          },
+          {
+            id: 3,
+            titulo: "Reporte de Inscripciones",
+            tipo: "Automático",
+            fecha: "2023-10-05",
+            estado: "Generando",
+            descargas: 0,
+            datos: { metricas: "En proceso de generación..." }
+          }
+        ]);
       }, 1000);
     }
-  }, [verificarAutenticacion, calcularEstadisticas]);
+  }, [verificarAutenticacion]);
+
+  useEffect(() => {
+    calcularEstadisticas(reportes);
+  }, [reportes, calcularEstadisticas]);
 
   const filtrarReportes = reportes.filter(reporte => {
     if (filtroFecha === "todos") return true;
@@ -118,12 +112,11 @@ export default function Reportes() {
     
     // Simular generación del reporte
     setTimeout(() => {
-      setReportes(prev => prev.map(r => 
-        r.id === nuevoReporte.id 
+      setReportes(prev => prev.map(r =>
+        r.id === nuevoReporte.id
           ? { ...r, estado: "Completado", datos: { metricas: "Generado exitosamente" } }
           : r
       ));
-      calcularEstadisticas(reportes);
     }, 3000);
   };
 
@@ -138,7 +131,6 @@ export default function Reportes() {
     setReportes(prev => prev.map(r =>
       r.id === reporte.id ? { ...r, descargas: r.descargas + 1 } : r
     ));
-    calcularEstadisticas(reportes);
   };
 
   const cerrarSesion = () => {

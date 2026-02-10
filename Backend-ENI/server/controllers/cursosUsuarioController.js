@@ -7,8 +7,13 @@ exports.getCursosForUser = async (req, res) => {
   const usuarioId = parseInt(req.params.usuarioId, 10);
   if (isNaN(usuarioId)) return res.status(400).json({ error: 'usuarioId inválido' });
 
+<<<<<<< HEAD:Backend-ENI/server/controllers/cursosUsuarioController.js
   // Allow users to request their own cursos, or Administradors to request any
   if (req.usuario && req.usuario.id !== usuarioId && req.usuario.rol !== 'Administrador') {
+=======
+  // Allow users to request their own cursos, or admins to request any
+  if (req.usuario && req.usuario.id !== usuarioId && req.usuario.rol !== 'administrador') {
+>>>>>>> origin/santi:Front_ENI/server/controllers/cursosUsuarioController.js
     return res.status(403).json({ error: 'No autorizado' });
   }
 

@@ -1,0 +1,47 @@
+* [33m4c646f78[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mSanti[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m conflictos solucionados
+*   [33m593febe6[m cambios de santi actualizados
+[32m|[m[33m\[m  
+* [33m\[m   [33mfbddd750[m Merge pull request #2 from alejandro0615/Alejo
+[34m|[m[35m\[m [33m\[m  
+[34m|[m * [33m|[m [33mc87c6f0c[m[33m ([m[1;31morigin/Alejo[m[33m)[m cambios para expiracion del token
+* [35m|[m [33m|[m [33m3ff151ea[m solucion para el problema de alejo
+[35m|[m[35m/[m [33m/[m  
+[35m|[m [33m|[m * [33mca45fab3[m[33m ([m[1;31morigin/copilot/sub-pr-1[m[33m)[m Add .env.example for environment variable configuration
+[35m|[m [33m|[m * [33m5e709866[m Address PR review comments: fix role validation, add .gitignore, remove unused import, centralize API URLs
+[35m|[m [33m|[m * [33m63a98f67[m Initial plan
+[35m|[m [33m|[m[33m/[m  
+[35m|[m * [33ma3be1b82[m[33m ([m[1;31morigin/Santi[m[33m)[m como siempre alejo llevando la fucking contraria (cambios nuevo gestion-usuarios)
+[35m|[m * [33mb500f611[m el boton de gestion de usuarios ya recoge de la base de datos
+[35m|[m[35m/[m  
+* [33maef9fa87[m[33m ([m[1;31morigin/Yeison[m[33m, [m[1;32mmain[m[33m)[m first commit
+* [33me8ddc951[m[33m ([m[1;31morigin/Yeison1[m[33m)[m googlee
+* [33m86b04ddb[m alejo es una lambonaaaaa
+* [33mbeaacc4c[m puse un robot en vez de una mano rodando jajajajaja
+* [33mfb65be7b[m avance: cambios backend y frontend
+*   [33ma0e2ff06[m Merge pull request #4 from alejandro0615/Alejo
+[1;32m|[m[1;33m\[m  
+[1;32m|[m *   [33m724e7dd8[m Merge branch 'main' into Alejo
+[1;32m|[m [1;34m|[m[1;32m\[m  
+[1;32m|[m [1;34m|[m[1;32m/[m  
+[1;32m|[m[1;32m/[m[1;34m|[m   
+* [1;34m|[m [33m52b37a87[m Ignorar .env backend, remover de tracking
+* [1;34m|[m [33m47e3a0bd[m Ignorar .env backend, remover de tracking
+* [1;34m|[m   [33m23d392c2[m Merge branch 'main' of https://github.com/alejandro0615/ENI-360
+[1;36m|[m[31m\[m [1;34m\[m  
+[1;36m|[m * [1;34m\[m   [33m84a1abf7[m Merge pull request #3 from alejandro0615/Alejo
+[1;36m|[m [32m|[m[33m\[m [1;34m\[m  
+[1;36m|[m * [33m\[m [1;34m\[m   [33m93ee5283[m Merge pull request #2 from alejandro0615/santi
+[1;36m|[m [34m|[m[35m\[m [33m\[m [1;34m\[m  
+[1;36m|[m [34m|[m * [33m|[m [1;34m|[m [33mea8476ab[m notificaciones de formador hacia admin
+[1;36m|[m [34m|[m[34m/[m [33m/[m [1;34m/[m  
+* [34m/[m [33m/[m [1;34m/[m [33mabe3a9f4[m ajuste de .gitignore
+[34m|[m[34m/[m [33m/[m [1;34m/[m  
+* [33m|[m [1;34m|[m   [33m4d7ce84b[m Merge pull request #1 from alejandro0615/Yeison
+[36m|[m[1;31m\[m [33m\[m [1;34m\[m  
+[36m|[m * [33m|[m [1;34m|[m [33m3c8fcdab[m alejo aca le mando mis cambios fueron tanto en el fronted como en el backend
+[36m|[m[36m/[m [33m/[m [1;34m/[m  
+[36m|[m [33m|[m * [33md6d160fd[m ajuste de vista principal y actualizacion de logo
+[36m|[m [33m|[m[33m/[m  
+[36m|[m * [33mba554d9f[m ajuste de .gitignore
+[36m|[m[36m/[m  
+* [33mf3af9039[m first commit

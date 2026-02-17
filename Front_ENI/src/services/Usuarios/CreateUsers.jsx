@@ -1,7 +1,5 @@
-import authFetch from "../../utils/authFetch";
-
 async function CreateUsers(user) {
-    const response = await authFetch('http://127.0.0.1:8000/api/Usuarios', {
+    const response = await fetch('http://127.0.0.1:8000/api/Usuarios', {
         method: 'POST',
         headers: {
             "Content-Type": "application/json",

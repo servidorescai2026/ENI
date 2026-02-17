@@ -1,5 +1,3 @@
-import authFetch from "../../utils/authFetch";
-
 export default function CreateCourse(formData) {
   const token = localStorage.getItem("token");
 
@@ -12,7 +10,7 @@ export default function CreateCourse(formData) {
     areaId: formData.areaId,
   };
 
-  return authFetch("http://localhost:3000/api/cursos", {
+  return fetch("http://localhost:3000/api/cursos", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,5 +1,6 @@
 import authFetch from "../../utils/authFetch";
 
+
 async function UpdateCourse(courseId, courseData) {
     const token = localStorage.getItem("token");
     console.log("UpdateCourse - CourseId:", courseId);

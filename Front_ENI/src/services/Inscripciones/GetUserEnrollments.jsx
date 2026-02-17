@@ -1,4 +1,5 @@
 import authFetch from "../../utils/authFetch";
+
 async function GetUserEnrollments() {
     const token = localStorage.getItem("token");
 

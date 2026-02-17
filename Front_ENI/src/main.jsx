@@ -8,19 +8,14 @@ import Usuario from "./Usuario";
 import RutaProtegida from "./RutaProtegida";
 import Administrador from "./Admin";
 import GestionCursos from "./GestionCursos";
-<<<<<<< HEAD
-=======
-import GestionUsuarios from "./Gestion_Usuarios";
->>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
 import CursosDisponibles from "./CursosDisponibles";
 import VerificarMisCursos from "./VerificarMisCursos";
 import EnviarNotificacionPorArea from "./notificaciones";
 import MisNotificaciones from "./MisNotificaciones";
 import SubirEvidencias from "./SubirEvidencias";
-<<<<<<< HEAD
-=======
 import Reportes from "./Reportes";
->>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
+import Configuracion from "./Configuracion";
+import Monitoria from "./Monitoria";
 import "./css/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -77,18 +72,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         />
 
         <Route
-<<<<<<< HEAD
-=======
-          path="/gestion-usuarios"
-          element={
-            <RutaProtegida rolRequerido="Administrador">
-              <GestionUsuarios />
-            </RutaProtegida>
-          }
-        />
-
-        <Route
->>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
           path="/cursos-disponibles"
           element={
             <RutaProtegida>
@@ -102,6 +85,33 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           element={
             <RutaProtegida rolRequerido="Formador">
               <VerificarMisCursos />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/configuracion"
+          element={
+            <RutaProtegida>
+              <Configuracion />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/monitoria"
+          element={
+            <RutaProtegida rolRequerido="Administrador">
+              <Monitoria />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/reportes"
+          element={
+            <RutaProtegida rolRequerido="Administrador">
+              <Reportes />
             </RutaProtegida>
           }
         />

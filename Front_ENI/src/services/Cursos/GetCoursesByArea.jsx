@@ -1,10 +1,19 @@
+<<<<<<< HEAD
+=======
+import authFetch from "../../utils/authFetch";
+
+>>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
 async function GetCoursesByArea(areaId) {
     if (!areaId) return [];
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+<<<<<<< HEAD
         const response = await fetch(`http://localhost:3000/api/cursos/area/${areaId}`, {
+=======
+        const response = await authFetch(`http://localhost:3000/api/cursos/area/${areaId}`, {
+>>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
             method: 'GET',
             headers: {
                 "Content-Type": "application/json",

@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+import authFetch from "../../utils/authFetch";
+
+>>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
 async function GetMyCourses() {
     const token = localStorage.getItem("token");
 
@@ -9,7 +14,11 @@ async function GetMyCourses() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+<<<<<<< HEAD
         const response = await fetch('http://localhost:3000/api/cursos/mios', {
+=======
+        const response = await authFetch('http://localhost:3000/api/cursos/mios', {
+>>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
             method: 'GET',
             headers: {
                 "Content-Type": "application/json",

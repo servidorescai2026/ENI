@@ -116,7 +116,7 @@ export default function CursosDisponibles() {
       loadUserEnrollments(); // Recargar inscripciones
     } catch (error) {
       console.error("Error inscribiéndose al curso:", error);
-      alert(`❌ ${error.message || "Error al inscribirse al curso. Inténtalo de nuevo."}`);
+      alert("Error al inscribirse al curso. Inténtalo de nuevo.");
     } finally {
       setEnrolling(null);
     }
@@ -158,9 +158,6 @@ export default function CursosDisponibles() {
           <div className="cursos-grid">
             {cursos.map((curso) => {
               const enrolled = isEnrolled(curso.id);
-              const esFormador = usuario?.rol === "Formador";
-              const formadorTieneInscripcion = esFormador && inscripciones.length > 0;
-              
               return (
                 <div key={curso.id} className="curso-card">
                   <div className="curso-header">
@@ -183,11 +180,6 @@ export default function CursosDisponibles() {
                     {enrolled ? (
                       <div className="enrolled-status">
                         <span className="enrolled-text">✓ Inscrito</span>
-                      </div>
-                    ) : formadorTieneInscripcion ? (
-                      <div className="enrollment-disabled">
-                        <span className="disabled-text">🔒 Ya tienes un curso</span>
-                        <small>Los formadores pueden cursar un curso a la vez</small>
                       </div>
                     ) : (
                       <button

@@ -1766,9 +1766,6 @@ footer a:hover {
   gap: 0.5rem;
   align-items: center;
 }
-.emoji-bounce {
-  animation: bounce 1s infinite;
-}
 
 .btn-notificaciones {
   background: linear-gradient(135deg, #ff9800, #f57c00);

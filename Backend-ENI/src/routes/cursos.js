@@ -48,44 +48,6 @@ router.get("/area/:areaId", async (req, res) => {
   }
 });
 
-// GET /api/cursos/mis-cursos - Obtener mis cursos (solo del área del usuario autenticado)
-router.get("/mios", verifyToken, async (req, res) => {
-  try {
-    const usuarioId = req.usuario.id;
-
-    // Obtener el usuario para saber su areaId
-    const usuario = await Usuario.findByPk(usuarioId, {
-      attributes: ['id', 'areaId']
-    });
-
-    if (!usuario) {
-      return res.status(404).json({
-        error: "Usuario no encontrado",
-        code: "USER_NOT_FOUND"
-      });
-    }
-
-    if (!usuario.areaId) {
-      return res.json([]);
-    }
-
-    // Obtener solo los cursos del área del usuario
-    const cursos = await Curso.findAll({
-      where: { areaId: usuario.areaId },
-      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'created_at', 'updated_at'],
-      order: [['created_at', 'DESC']]
-    });
-
-    res.json(cursos);
-  } catch (error) {
-    console.error("Error al obtener mis cursos:", error);
-    res.status(500).json({
-      error: "Error interno del servidor",
-      code: "INTERNAL_ERROR"
-    });
-  }
-});
-
 // GET /api/cursos/:id/usuarios - Obtener usuarios vinculados a un curso
 router.get("/:id/usuarios", async (req, res) => {
   try {

@@ -172,7 +172,6 @@ footer a:hover {
   --bg: #0b102f;
 }
 
-
 .principal-page {
   min-height: 100vh;
   display: flex;
@@ -713,7 +712,7 @@ footer a:hover {
 }
 
 .admin-header {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -725,10 +724,11 @@ footer a:hover {
 }
 
 .admin-top {
+  
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1500px;
+  max-width: 1400px;
   margin: 0 auto;
   flex-wrap: wrap;
   gap: 15px;
@@ -744,7 +744,7 @@ footer a:hover {
 .welcome-text {
   font-size: 1.7rem;
   font-weight: bold;
-  color: #dbdcdf;
+  color: #d6e3ff;
   animation: floatText 3s infinite ease-in-out;
 }
 
@@ -765,7 +765,7 @@ footer a:hover {
   padding: 12px 20px;
   border: none;
   border-radius: 12px;
-  background: #0f3ea4;
+  background: #2f64d4;
   color: white;
   cursor: pointer;
   font-size: 1rem;
@@ -813,7 +813,7 @@ footer a:hover {
 }
 
 .btn-notificacion {
-  background: linear-gradient(135deg, #0f3ea4 0%, #0f3ea4 100%);
+  background: linear-gradient(135deg, #1e77c6 0%, #2a8ae0 100%);
 }
 
 .btn-cerrar {
@@ -821,7 +821,7 @@ footer a:hover {
 }
 
 .admin-main {
-  margin-top: 150px;
+  margin-top: 100px;
   text-align: center;
   padding: 20px;
   min-height: calc(100vh - 200px);
@@ -909,61 +909,6 @@ footer a:hover {
   background: rgba(13, 26, 51, 0.8);
   color: #9ab6ff;
   backdrop-filter: blur(5px);
-}
-
-/* Estilos para tabla de usuarios en gestión */
-.usuarios-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.usuarios-table th,
-.usuarios-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.usuarios-table th {
-  background: rgba(255, 255, 255, 0.2);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  letter-spacing: 0.5px;
-}
-
-.usuarios-table tr:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.usuarios-table tr:last-child td {
-  border-bottom: none;
-}
-
-/* Botón volver al panel */
-.btn-volver-panel {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-  margin-bottom: 1rem;
-}
-
-.btn-volver-panel:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 /* ========== Notificaciones por área ========== */
@@ -1198,6 +1143,7 @@ footer a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 2rem;
+  align-items: stretch;
 }
 
 .curso-card {
@@ -1212,6 +1158,7 @@ footer a:hover {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  height: 100%;
 }
 
 .curso-card::before {
@@ -1299,6 +1246,9 @@ footer a:hover {
 .curso-card-body {
   flex: 1;
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
 }
 
 .curso-descripcion {
@@ -1306,10 +1256,13 @@ footer a:hover {
   margin-bottom: 1.5rem;
   line-height: 1.7;
   font-size: 0.95rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  height: 100px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  word-break: break-word;
+  padding-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 .curso-info-grid {
@@ -1822,9 +1775,6 @@ footer a:hover {
   gap: 0.5rem;
   align-items: center;
 }
-.emoji-bounce {
-  animation: bounce 1s infinite;
-}
 
 .btn-notificaciones {
   background: linear-gradient(135deg, #ff9800, #f57c00);
@@ -2276,6 +2226,7 @@ footer a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 2rem;
+  align-items: stretch;
 }
 
 .curso-card {
@@ -2290,6 +2241,7 @@ footer a:hover {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  height: 100%;
 }
 
 .curso-card::before {
@@ -2377,6 +2329,9 @@ footer a:hover {
 .curso-card-body {
   flex: 1;
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
 }
 
 .curso-descripcion {
@@ -2384,10 +2339,13 @@ footer a:hover {
   margin-bottom: 1.5rem;
   line-height: 1.7;
   font-size: 0.95rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  height: 100px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  word-break: break-word;
+  padding-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 .curso-info-grid {
@@ -3085,22 +3043,6 @@ footer a:hover {
   background: linear-gradient(135deg, #7b1fa2, #6a1b9a);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(156, 39, 176, 0.4);
-}
-
-/* Estilos para badges de roles */
-.categoria-administrador {
-  background: linear-gradient(135deg, #f44336, #d32f2f);
-  color: #fff;
-}
-
-.categoria-formador {
-  background: linear-gradient(135deg, #2196f3, #1976d2);
-  color: #fff;
-}
-
-.categoria-estudiante {
-  background: linear-gradient(135deg, #4caf50, #45a049);
-  color: #fff;
 }
 
 /* Responsive para gestión de cursos */

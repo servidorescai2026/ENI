@@ -8,7 +8,6 @@ import Usuario from "./Usuario";
 import RutaProtegida from "./RutaProtegida";
 import Administrador from "./Admin";
 import GestionCursos from "./GestionCursos";
-import GestionUsuarios from "./Gestion_Usuarios";
 import CursosDisponibles from "./CursosDisponibles";
 import VerificarMisCursos from "./VerificarMisCursos";
 import EnviarNotificacionPorArea from "./notificaciones";
@@ -68,15 +67,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           element={
             <RutaProtegida rolRequerido="Administrador">
               <GestionCursos />
-            </RutaProtegida>
-          }
-        />
-
-        <Route
-          path="/gestion-usuarios"
-          element={
-            <RutaProtegida rolRequerido="Administrador">
-              <GestionUsuarios />
             </RutaProtegida>
           }
         />

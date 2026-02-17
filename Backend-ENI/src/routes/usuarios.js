@@ -161,6 +161,8 @@ router.post("/login", verifyCaptcha, async (req, res) => {
 });
 
 
+<<<<<<< HEAD
+=======
 router.get("/", verifyToken, async (req, res) => {
   try {
     if (req.usuario.rol !== "Administrador") {
@@ -177,6 +179,7 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
+>>>>>>> 4c646f78c86c24f773229c8c3fdbbeba13241f67
 router.get("/perfil", verifyToken, async (req, res) => {
   const usuario = await Usuario.findByPk(req.usuario.id, {
     attributes: ["id", "nombre", "apellido", "email", "rol", "categoria"],

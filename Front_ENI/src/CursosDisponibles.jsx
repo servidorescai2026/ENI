@@ -57,27 +57,25 @@ export default function CursosDisponibles() {
       if (isAdmin) {
         data = await GetAllCourses();
       } else if (u && u.areaId) {
-        // Intentar endpoint por área; si falla, traer todos y luego filtrar.
+        // Intentar endpoint por área; si falla, traer todos y luego filtrar localmente.
         try {
           data = await GetCoursesByArea(u.areaId);
         } catch (err) {
           console.warn('GetCoursesByArea falló, usando GetAllCourses como fallback:', err);
           data = await GetAllCourses();
-        }
-
-        // Asegurar filtrado client-side para evitar que cursos de otras áreas aparezcan
-        // (maneja diferencias de nombres de campo y tipos: areaId, area_id, area)
-        if (Array.isArray(data)) {
-          const areaStr = String(u.areaId);
-          data = data.filter((c) => {
-            return (
-              String(c.areaId || '') === areaStr ||
-              String(c.area_id || '') === areaStr ||
-              String(c.area || '') === areaStr
-            );
-          });
-        } else {
-          data = [];
+          // Solo en el fallback con GetAllCourses filtramos por área en el cliente.
+          if (Array.isArray(data)) {
+            const areaStr = String(u.areaId);
+            data = data.filter((c) => {
+              return (
+                String(c.areaId || '') === areaStr ||
+                String(c.area_id || '') === areaStr ||
+                String(c.area || '') === areaStr
+              );
+            });
+          } else {
+            data = [];
+          }
         }
       } else {
         // fallback: intentar obtener todos
@@ -116,7 +114,7 @@ export default function CursosDisponibles() {
       loadUserEnrollments(); // Recargar inscripciones
     } catch (error) {
       console.error("Error inscribiéndose al curso:", error);
-      alert(`❌ ${error.message || "Error al inscribirse al curso. Inténtalo de nuevo."}`);
+      alert("Error al inscribirse al curso. Inténtalo de nuevo.");
     } finally {
       setEnrolling(null);
     }
@@ -158,9 +156,6 @@ export default function CursosDisponibles() {
           <div className="cursos-grid">
             {cursos.map((curso) => {
               const enrolled = isEnrolled(curso.id);
-              const esFormador = usuario?.rol === "Formador";
-              const formadorTieneInscripcion = esFormador && inscripciones.length > 0;
-              
               return (
                 <div key={curso.id} className="curso-card">
                   <div className="curso-header">
@@ -183,11 +178,6 @@ export default function CursosDisponibles() {
                     {enrolled ? (
                       <div className="enrolled-status">
                         <span className="enrolled-text">✓ Inscrito</span>
-                      </div>
-                    ) : formadorTieneInscripcion ? (
-                      <div className="enrollment-disabled">
-                        <span className="disabled-text">🔒 Ya tienes un curso</span>
-                        <small>Los formadores pueden cursar un curso a la vez</small>
                       </div>
                     ) : (
                       <button

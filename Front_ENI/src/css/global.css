@@ -1775,9 +1775,6 @@ footer a:hover {
   gap: 0.5rem;
   align-items: center;
 }
-.emoji-bounce {
-  animation: bounce 1s infinite;
-}
 
 .btn-notificaciones {
   background: linear-gradient(135deg, #ff9800, #f57c00);
@@ -3177,64 +3174,3 @@ footer a:hover {
   }
 }/* =========================
    HAMBURGUESA RESPONSIVE
-========================= */
-
-/* Botón hamburguesa */
-.menu-toggle {
-  display: none;
-  font-size: 26px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  color: white;
-}
-
-/* Contenedor botones */
-.header-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ===== MOBILE ===== */
-@media (max-width: 768px) {
-
-  .admin-top {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  /* Mostrar hamburguesa */
-  .menu-toggle {
-    display: block;
-  }
-
-  /* Botones como menú desplegable */
-  .header-buttons {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: rgba(13, 26, 51, 0.98);
-    backdrop-filter: blur(12px);
-    flex-direction: column;
-    padding: 15px;
-    display: none;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-
-  /* Activar menú */
-  .header-buttons.active {
-    display: flex;
-  }
-
-  .header-buttons button {
-    width: 100%;
-  }
-
-  /* Ajuste del contenido principal por header fijo */
-  .admin-main {
-    margin-top: 140px;
-    padding: 2rem;
-  }
-}

@@ -1,3 +1,6 @@
+import authFetch from "../../utils/authFetch";
+
+
 async function UpdateCourse(courseId, courseData) {
     const token = localStorage.getItem("token");
     console.log("UpdateCourse - CourseId:", courseId);
@@ -11,7 +14,7 @@ async function UpdateCourse(courseId, courseData) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await fetch(`http://localhost:3000/api/cursos/${courseId}`, {
+        const response = await authFetch(`http://localhost:3000/api/cursos/${courseId}`, {
             method: 'PUT',
             headers: {
                 "Content-Type": "application/json",
@@ -29,7 +32,7 @@ async function UpdateCourse(courseId, courseData) {
             try {
                 errorText = await response.text();
             } catch (e) {
-                errorText = "Error desconocido del servidor";
+                errorText = `Error desconocido del servidor ${e}`;
             }
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }

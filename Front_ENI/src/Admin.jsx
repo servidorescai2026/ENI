@@ -40,6 +40,16 @@ export default function Administrador() {
     navigate("/gestion-cursos");
   };
 
+  // Función para navegar a Configuración
+  const irAConfiguracion = () => {
+    navigate("/configuracion");
+  };
+
+  // Función para navegar a Monitoría
+  const irAMonitoria = () => {
+    navigate("/monitoria");
+  };
+
   if (!usuario) return <p>Cargando...</p>;
 
   return (
@@ -116,11 +126,13 @@ export default function Administrador() {
             <div className="card-hover-indicator">→</div>
           </button>
 
-          <div className="dashboard-card">
+          {/* Botón de Configuración */}
+          <button className="dashboard-card clickable-card" onClick={irAConfiguracion}>
             <div className="card-icon icon-virtual"></div>
             <h4>Configuración</h4>
             <p>Ajusta los parámetros del sistema</p>
-          </div>
+            <div className="card-hover-indicator">→</div>
+          </button>
 
           {/* Botón de Reportes */}
           <button className="dashboard-card clickable-card" onClick={irAReportes}>
@@ -130,11 +142,13 @@ export default function Administrador() {
             <div className="card-hover-indicator">→</div>
           </button>
 
-          <div className="dashboard-card">
+          {/* Botón de Monitoría */}
+          <button className="dashboard-card clickable-card" onClick={irAMonitoria}>
             <div className="card-icon icon-idiomas"></div>
-            <h4>Auditoría</h4>
-            <p>Revisa los logs del sistema</p>
-          </div>
+            <h4>Monitoría</h4>
+            <p>Revisa formadores sin evidencias</p>
+            <div className="card-hover-indicator">→</div>
+          </button>
         </div>
       </main>
 

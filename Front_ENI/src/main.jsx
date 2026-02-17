@@ -13,6 +13,9 @@ import VerificarMisCursos from "./VerificarMisCursos";
 import EnviarNotificacionPorArea from "./notificaciones";
 import MisNotificaciones from "./MisNotificaciones";
 import SubirEvidencias from "./SubirEvidencias";
+import Reportes from "./Reportes";
+import Configuracion from "./Configuracion";
+import Monitoria from "./Monitoria";
 import "./css/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -82,6 +85,33 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           element={
             <RutaProtegida rolRequerido="Formador">
               <VerificarMisCursos />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/configuracion"
+          element={
+            <RutaProtegida>
+              <Configuracion />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/monitoria"
+          element={
+            <RutaProtegida rolRequerido="Administrador">
+              <Monitoria />
+            </RutaProtegida>
+          }
+        />
+
+        <Route
+          path="/reportes"
+          element={
+            <RutaProtegida rolRequerido="Administrador">
+              <Reportes />
             </RutaProtegida>
           }
         />

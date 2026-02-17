@@ -20,7 +20,12 @@ export default function GestionCursos() {
     duracion: 0,
     categoria: "",
     nivel: "Básico",
-    areaId: ""
+    areaId: "",
+    fechaInicio: "",
+    fechaFin: "",
+    tipoLanzamiento: "fecha", // "fecha", "cantidad", "ambos"
+    maxPersonas: 0,
+    fechaCierreInscripcion: ""
   });
 
   useEffect(() => {
@@ -97,7 +102,12 @@ export default function GestionCursos() {
         duracion: 0,
         categoria: "",
         nivel: "Básico",
-        areaId: ""
+        areaId: "",
+        fechaInicio: "",
+        fechaFin: "",
+        tipoLanzamiento: "fecha",
+        maxPersonas: 0,
+        fechaCierreInscripcion: ""
       });
       setAreaSeleccionada("");
       loadCursos();
@@ -115,7 +125,12 @@ export default function GestionCursos() {
       duracion: curso.duracion,
       categoria: curso.categoria,
       nivel: curso.nivel,
-      areaId: curso.areaId
+      areaId: curso.areaId,
+      fechaInicio: curso.fechaInicio ? curso.fechaInicio.split('T')[0] : "",
+      fechaFin: curso.fechaFin ? curso.fechaFin.split('T')[0] : "",
+      tipoLanzamiento: curso.tipoLanzamiento || "fecha",
+      maxPersonas: curso.maxPersonas || 0,
+      fechaCierreInscripcion: curso.fechaCierreInscripcion ? curso.fechaCierreInscripcion.split('T')[0] : ""
     });
     setAreaSeleccionada(curso.areaId || "");
     setShowForm(true);
@@ -137,7 +152,7 @@ export default function GestionCursos() {
     const { name, value } = e.target;
 
     // Convertir campos numéricos a números
-    const numericFields = ['duracion'];
+    const numericFields = ['duracion', 'maxPersonas'];
     const processedValue = numericFields.includes(name) ? parseFloat(value) || 0 : value;
 
     setFormData({
@@ -169,7 +184,12 @@ export default function GestionCursos() {
                 duracion: 0,
                 categoria: "",
                 nivel: "Básico",
-                areaId: ""
+                areaId: "",
+                fechaInicio: "",
+                fechaFin: "",
+                tipoLanzamiento: "fecha",
+                maxPersonas: 0,
+                fechaCierreInscripcion: ""
               });
               setAreaSeleccionada("");
             }}>
@@ -272,6 +292,76 @@ export default function GestionCursos() {
                   </select>
                 </div>
 
+                {/* Fechas del curso */}
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>📅 Fecha de Inicio:</label>
+                    <input
+                      type="date"
+                      name="fechaInicio"
+                      value={formData.fechaInicio}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>📅 Fecha de Finalización:</label>
+                    <input
+                      type="date"
+                      name="fechaFin"
+                      value={formData.fechaFin}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Tipo de lanzamiento */}
+                <div className="form-group">
+                  <label>🚀 Tipo de Lanzamiento:</label>
+                  <select
+                    name="tipoLanzamiento"
+                    value={formData.tipoLanzamiento}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="fecha">Por Fecha de Cierre</option>
+                    <option value="cantidad">Por Cantidad de Personas</option>
+                    <option value="ambos">Ambos (Fecha y Cantidad)</option>
+                  </select>
+                </div>
+
+                {/* Campos condicionales según tipo de lanzamiento */}
+                {(formData.tipoLanzamiento === "fecha" || formData.tipoLanzamiento === "ambos") && (
+                  <div className="form-group">
+                    <label>📆 Fecha de Cierre de Inscripción:</label>
+                    <input
+                      type="date"
+                      name="fechaCierreInscripcion"
+                      value={formData.fechaCierreInscripcion}
+                      onChange={handleInputChange}
+                      required={formData.tipoLanzamiento === "fecha" || formData.tipoLanzamiento === "ambos"}
+                    />
+                    <small className="form-hint">Los usuarios podrán inscribirse hasta esta fecha</small>
+                  </div>
+                )}
+
+                {(formData.tipoLanzamiento === "cantidad" || formData.tipoLanzamiento === "ambos") && (
+                  <div className="form-group">
+                    <label>👥 Máximo de Personas:</label>
+                    <input
+                      type="number"
+                      name="maxPersonas"
+                      value={formData.maxPersonas}
+                      onChange={handleInputChange}
+                      required={formData.tipoLanzamiento === "cantidad" || formData.tipoLanzamiento === "ambos"}
+                      min="1"
+                      placeholder="Ej: 30"
+                    />
+                    <small className="form-hint">El curso se cerrará al alcanzar este número de inscritos</small>
+                  </div>
+                )}
+
                 <div className="form-actions">
                   <button type="submit" className="btn-guardar">
                     {editingCourse ? "Actualizar" : "Crear"} Curso
@@ -314,10 +404,14 @@ export default function GestionCursos() {
                   nombre: "",
                   descripcion: "",
                   duracion: 0,
-                  precio: 0,
                   categoria: "",
                   nivel: "Básico",
-                  areaId: ""
+                  areaId: "",
+                  fechaInicio: "",
+                  fechaFin: "",
+                  tipoLanzamiento: "fecha",
+                  maxPersonas: 0,
+                  fechaCierreInscripcion: ""
                 });
                 setAreaSeleccionada("");
               }}>
@@ -357,7 +451,36 @@ export default function GestionCursos() {
                           <span className="info-value">{curso.areaId}</span>
                         </div>
                       </div>
+                      {curso.fechaInicio && (
+                        <div className="info-item">
+                          <span className="info-icon">📅</span>
+                          <div>
+                            <span className="info-label">Inicio</span>
+                            <span className="info-value">{new Date(curso.fechaInicio).toLocaleDateString("es-ES")}</span>
+                          </div>
+                        </div>
+                      )}
+                      {curso.fechaFin && (
+                        <div className="info-item">
+                          <span className="info-icon">🏁</span>
+                          <div>
+                            <span className="info-label">Fin</span>
+                            <span className="info-value">{new Date(curso.fechaFin).toLocaleDateString("es-ES")}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Badge de tipo de lanzamiento */}
+                    {curso.tipoLanzamiento && (
+                      <div style={{ marginTop: '0.8rem' }}>
+                        <span className={`lanzamiento-badge ${curso.tipoLanzamiento}`}>
+                          {curso.tipoLanzamiento === 'fecha' && `📆 Cierre: ${curso.fechaCierreInscripcion ? new Date(curso.fechaCierreInscripcion).toLocaleDateString("es-ES") : 'N/A'}`}
+                          {curso.tipoLanzamiento === 'cantidad' && `👥 Máx: ${curso.maxPersonas || 0} personas`}
+                          {curso.tipoLanzamiento === 'ambos' && `📆 Cierre: ${curso.fechaCierreInscripcion ? new Date(curso.fechaCierreInscripcion).toLocaleDateString("es-ES") : 'N/A'} | 👥 Máx: ${curso.maxPersonas || 0}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="curso-card-actions">

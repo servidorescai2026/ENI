@@ -2,6 +2,8 @@ import express from "express";
 import { Inscripcion } from "../database/models/inscripciones.js";
 import { Curso } from "../database/models/cursos.js";
 import { Usuario } from "../database/models/usuarios.js";
+import { sequelize } from "../database/config.js";
+import { Op } from "sequelize";
 import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
@@ -44,20 +46,79 @@ router.post("/", verifyToken, async (req, res) => {
       });
     }
 
+    // 🔑 Validación: Verificar si el usuario tiene cursos pendientes (orden cronológico)
+    // Un usuario no puede inscribirse a un nuevo curso si tiene cursos activos que no ha terminado
+    const inscripcionesActivas = await Inscripcion.findAll({
+      where: {
+        usuario_id,
+        estado: 'activo'
+      },
+      include: [{
+        model: Curso,
+        as: 'curso',
+        attributes: ['id', 'nombre', 'fechaFin']
+      }]
+    });
+
+    // Verificar si hay cursos activos cuya fecha de fin aún no ha pasado
+    const hoy = new Date();
+    const cursosPendientes = inscripcionesActivas.filter(ins => {
+      if (!ins.curso || !ins.curso.fechaFin) return false;
+      return new Date(ins.curso.fechaFin) > hoy;
+    });
+
+    if (cursosPendientes.length > 0) {
+      const nombresCursosPendientes = cursosPendientes.map(ins => ins.curso.nombre).join(', ');
+      return res.status(409).json({
+        error: `No puedes inscribirte a un nuevo curso hasta terminar tus cursos pendientes: ${nombresCursosPendientes}`,
+        code: "PENDING_COURSES",
+        cursosPendientes: cursosPendientes.map(ins => ({
+          id: ins.curso.id,
+          nombre: ins.curso.nombre,
+          fechaFin: ins.curso.fechaFin
+        }))
+      });
+    }
+
+    // 🔑 Validación: Verificar límites de lanzamiento
+    // Contar inscripciones actuales para el curso
+    const inscripcionesActuales = await Inscripcion.count({
+      where: { curso_id, estado: 'activo' }
+    });
+
+    // Verificar tipo de lanzamiento
+    if (curso.tipoLanzamiento === 'cantidad' || curso.tipoLanzamiento === 'ambos') {
+      if (curso.maxPersonas > 0 && inscripcionesActuales >= curso.maxPersonas) {
+        return res.status(409).json({
+          error: "El curso ha alcanzado el máximo de personas inscritas",
+          code: "MAX_CAPACITY_REACHED"
+        });
+      }
+    }
+
+    if (curso.tipoLanzamiento === 'fecha' || curso.tipoLanzamiento === 'ambos') {
+      if (curso.fechaCierreInscripcion && new Date(curso.fechaCierreInscripcion) < hoy) {
+        return res.status(409).json({
+          error: "El período de inscripción ha cerrado",
+          code: "ENROLLMENT_CLOSED"
+        });
+      }
+    }
+
     // 🔑 Validación: Formadores solo pueden tener UNA inscripción activa
     const usuario = await Usuario.findByPk(usuario_id, {
       attributes: ['rol']
     });
 
     if (usuario && usuario.rol === "Formador") {
-      const inscripcionesActivas = await Inscripcion.findOne({
+      const inscripcionActiva = await Inscripcion.findOne({
         where: {
           usuario_id,
           estado: 'activo'
         }
       });
 
-      if (inscripcionesActivas) {
+      if (inscripcionActiva) {
         return res.status(409).json({
           error: "Como Formador, solo puedes estar inscrito en un curso a la vez",
           code: "FORMADOR_SINGLE_ENROLLMENT"

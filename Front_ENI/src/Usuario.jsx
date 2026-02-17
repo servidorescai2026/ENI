@@ -10,6 +10,7 @@ export default function Usuario() {
   const [cursosDisponibles, setCursosDisponibles] = useState([]);
   const [misInscripciones, setMisInscripciones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
 
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
@@ -22,6 +23,36 @@ export default function Usuario() {
       loadCursosData();
     }
   }, [navigate]);
+
+  // Cargar contador de notificaciones no leídas
+  useEffect(() => {
+    const cargarNotificacionesNoLeidas = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      
+      try {
+        const res = await fetch("http://localhost:3000/api/usuarios/mis-notificaciones", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const noLeidas = (data.notificaciones || []).filter(n => !n.leida).length;
+        setNotificacionesNoLeidas(noLeidas);
+      } catch (error) {
+        console.error("Error al cargar notificaciones:", error);
+      }
+    };
+
+    cargarNotificacionesNoLeidas();
+    // Actualizar cada 30 segundos
+    const interval = setInterval(cargarNotificacionesNoLeidas, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Función para formatear el contador
+  const formatearContador = (cantidad) => {
+    if (cantidad > 99) return "99+";
+    return cantidad.toString();
+  };
 
   const loadCursosData = async () => {
     try {
@@ -91,8 +122,11 @@ export default function Usuario() {
             </button>
           )}
 
-          <button className="btn-notificaciones" onClick={irAMisNotificaciones}>
+          <button className="btn-notificaciones btn-con-badge" onClick={irAMisNotificaciones}>
             Ver notificaciones
+            {notificacionesNoLeidas > 0 && (
+              <span className="notification-badge">{formatearContador(notificacionesNoLeidas)}</span>
+            )}
           </button>
 
           <button className="btn-evidencias" onClick={irASubirEvidencias}>

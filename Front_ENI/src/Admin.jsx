@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 export default function Administrador() {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(null);
+  const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
 
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
@@ -18,6 +19,36 @@ export default function Administrador() {
       setUsuario(datosUsuario);
     }
   }, [navigate]);
+
+  // Cargar contador de notificaciones no leídas
+  useEffect(() => {
+    const cargarNotificacionesNoLeidas = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      
+      try {
+        const res = await fetch("http://localhost:3000/api/usuarios/mis-notificaciones", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const noLeidas = (data.notificaciones || []).filter(n => !n.leida).length;
+        setNotificacionesNoLeidas(noLeidas);
+      } catch (error) {
+        console.error("Error al cargar notificaciones:", error);
+      }
+    };
+
+    cargarNotificacionesNoLeidas();
+    // Actualizar cada 30 segundos
+    const interval = setInterval(cargarNotificacionesNoLeidas, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Función para formatear el contador
+  const formatearContador = (cantidad) => {
+    if (cantidad > 99) return "99+";
+    return cantidad.toString();
+  };
 
   const cerrarSesion = () => {
     localStorage.removeItem("token");
@@ -64,6 +95,17 @@ export default function Administrador() {
             </h2>
           </div>
 
+          <button
+  className="menu-toggle"
+  onClick={() =>
+    document.querySelector(".header-buttons")
+      .classList.toggle("active")
+  }
+>
+  ☰
+</button>
+
+
           <div className="header-buttons">
             <button className="btn-anim" onClick={() => navigate("/register")}>
               <div className="btn-icon">
@@ -79,11 +121,14 @@ export default function Administrador() {
               <span>Enviar Notificación</span>
             </button>
 
-            <button className="btn-anim" onClick={() => navigate("/mis-notificaciones")}>
+            <button className="btn-anim btn-con-badge" onClick={() => navigate("/mis-notificaciones")}>
               <div className="btn-icon">
                 <div className="icon-virtual"></div>
               </div>
               <span>Mis notificaciones</span>
+              {notificacionesNoLeidas > 0 && (
+                <span className="notification-badge">{formatearContador(notificacionesNoLeidas)}</span>
+              )}
             </button>
 
             <button className="btn-anim btn-cerrar" onClick={cerrarSesion}>

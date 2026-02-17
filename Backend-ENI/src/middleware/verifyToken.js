@@ -18,17 +18,7 @@ const verifyToken = (req, res, next) => {
     req.usuario = decoded;
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        mensaje: "Tu sesión ha expirado",
-        codigo: "TOKEN_EXPIRED"
-      });
-    }
-
-    return res.status(401).json({
-      mensaje: "Token inválido",
-      codigo: "INVALID_TOKEN"
-    });
+    res.status(403).json({ mensaje: "Token inválido o expirado" });
   }
 };
 

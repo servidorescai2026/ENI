@@ -724,6 +724,7 @@ footer a:hover {
 }
 
 .admin-top {
+  
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1142,6 +1143,7 @@ footer a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 2rem;
+  align-items: stretch;
 }
 
 .curso-card {
@@ -1156,6 +1158,7 @@ footer a:hover {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  height: 100%;
 }
 
 .curso-card::before {
@@ -1243,6 +1246,9 @@ footer a:hover {
 .curso-card-body {
   flex: 1;
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
 }
 
 .curso-descripcion {
@@ -1250,10 +1256,13 @@ footer a:hover {
   margin-bottom: 1.5rem;
   line-height: 1.7;
   font-size: 0.95rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  height: 100px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  word-break: break-word;
+  padding-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 .curso-info-grid {
@@ -2217,6 +2226,7 @@ footer a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 2rem;
+  align-items: stretch;
 }
 
 .curso-card {
@@ -2231,6 +2241,7 @@ footer a:hover {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  height: 100%;
 }
 
 .curso-card::before {
@@ -2318,6 +2329,9 @@ footer a:hover {
 .curso-card-body {
   flex: 1;
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
 }
 
 .curso-descripcion {
@@ -2325,10 +2339,13 @@ footer a:hover {
   margin-bottom: 1.5rem;
   line-height: 1.7;
   font-size: 0.95rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  height: 100px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  word-break: break-word;
+  padding-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 .curso-info-grid {
@@ -4104,5 +4121,390 @@ footer a:hover {
   .stat-item {
     width: 100%;
     max-width: 200px;
+  }
+}
+
+/* ========== Verificar Mis Cursos (Formador) ========== */
+.verificar-cursos-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a237e 0%, #3949ab 50%, #5c6bc0 100%);
+  background-attachment: fixed;
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.verificar-cursos-header {
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.verificar-cursos-header .header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.verificar-cursos-header .header-title-section h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.5rem 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.verificar-cursos-header .header-subtitle {
+  color: #c3d0ff;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.verificar-cursos-header .header-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.verificar-cursos-main {
+  flex: 1;
+  padding: 2.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.verificar-cursos-main .cursos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.verificar-cursos-main .curso-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.verificar-cursos-main .curso-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4caf50, #2196f3, #9c27b0);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.verificar-cursos-main .curso-card:hover::before {
+  opacity: 1;
+}
+
+.verificar-cursos-main .curso-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.verificar-cursos-main .curso-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.verificar-cursos-main .curso-header h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.verificar-cursos-main .curso-nivel {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.verificar-cursos-main .curso-body {
+  flex: 1;
+  margin-bottom: 1.5rem;
+}
+
+.verificar-cursos-main .curso-descripcion {
+  color: #e1e7ff;
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.verificar-cursos-main .curso-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.verificar-cursos-main .info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.verificar-cursos-main .info-item label {
+  font-size: 0.75rem;
+  color: #aab6ff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.verificar-cursos-main .info-item span {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.verificar-cursos-main .curso-footer {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.verificar-cursos-main .fecha-creacion {
+  color: #aab6ff;
+  font-size: 0.85rem;
+}
+
+.loading-section,
+.error-section,
+.empty-section {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.error-message {
+  color: #ff6b6b;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.btn-panel {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-panel:hover {
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+}
+
+.btn-recargar {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-recargar:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.btn-recargar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-recargar-error {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.btn-recargar-error:hover {
+  background: linear-gradient(135deg, #d32f2f, #b71c1c);
+  transform: translateY(-2px);
+}
+
+/* Responsive para Verificar Mis Cursos */
+@media (max-width: 768px) {
+  .verificar-cursos-main {
+    padding: 1rem;
+  }
+
+  .verificar-cursos-header .header-top {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .verificar-cursos-header .header-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .verificar-cursos-main .cursos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .verificar-cursos-main .curso-info {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========== Estilos para formulario de cursos ========== */
+.form-hint {
+  display: block;
+  font-size: 0.8rem;
+  color: #aab6ff;
+  margin-top: 0.3rem;
+  font-style: italic;
+}
+
+.curso-fechas {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fecha-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #e1e7ff;
+}
+
+.fecha-item strong {
+  color: #fff;
+}
+
+.lanzamiento-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.lanzamiento-badge.fecha {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: #fff;
+}
+
+.lanzamiento-badge.cantidad {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: #fff;
+}
+
+.lanzamiento-badge.ambos {
+  background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+  color: #fff;
+}
+
+/* ========== Badge de notificaciones ========== */
+.btn-con-badge {
+  position: relative;
+  overflow: visible !important;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
+  animation: pulse-badge 2s infinite;
+  z-index: 100;
+  border: 2px solid #fff;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Responsive para badge de notificaciones */
+@media (max-width: 768px) {
+  .notification-badge {
+    top: -8px;
+    right: -8px;
+    min-width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
   }
 }

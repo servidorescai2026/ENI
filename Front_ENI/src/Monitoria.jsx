@@ -109,7 +109,7 @@ export default function Monitoria() {
   const formadoresFiltrados = formadoresSinEvidencias.filter(f => {
     if (filtro === "todos") return true;
     if (filtro === "pendientes") return f.estado === 'pendiente' || f.tieneEvidenciasPendientes || f.tieneEvidenciasRechazadas;
-    if (filtro === "al-dia") return f.estado === 'al-dia' && !f.tieneEvidenciasPendientes;
+    if (filtro === "al-dia") return f.estado === 'al-dia';
     if (filtro === "con-evidencia") return f.totalEvidencias > 0;
     return true;
   });
@@ -156,7 +156,7 @@ export default function Monitoria() {
           className={`filtro-btn ok ${filtro === "al-dia" ? "activo" : ""}`}
           onClick={() => setFiltro("al-dia")}
         >
-          ✅ Al día ({formadoresSinEvidencias.filter(f => f.estado === 'al-dia' && !f.tieneEvidenciasPendientes).length})
+          ✅ Al día ({formadoresSinEvidencias.filter(f => f.estado === 'al-dia').length})
         </button>
       </div>
 

@@ -63,7 +63,9 @@ router.post("/", verifyToken, async (req, res) => {
     // Verificar si hay cursos activos cuya fecha de fin aún no ha pasado
     const hoy = new Date();
     const cursosPendientes = inscripcionesActivas.filter(ins => {
-      if (!ins.curso || !ins.curso.fechaFin) return false;
+      if (!ins.curso) return false;
+      // Si el curso está activo pero no tiene fechaFin, se considera pendiente
+      if (!ins.curso.fechaFin) return true;
       return new Date(ins.curso.fechaFin) > hoy;
     });
 

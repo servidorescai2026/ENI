@@ -55,6 +55,31 @@ export const Curso = sequelize.define(
         key: 'id'
       }
     },
+    fechaInicio: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    fechaFin: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    tipoLanzamiento: {
+      type: DataTypes.ENUM('fecha', 'cantidad', 'ambos'),
+      allowNull: false,
+      defaultValue: 'fecha',
+    },
+    maxPersonas: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+      validate: {
+        min: 0
+      }
+    },
+    fechaCierreInscripcion: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

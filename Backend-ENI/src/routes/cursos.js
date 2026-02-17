@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
   try {
     const cursos = await Curso.findAll({
       order: [['created_at', 'DESC']],
-      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'created_at', 'updated_at']
+      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'fechaInicio', 'fechaFin', 'tipoLanzamiento', 'maxPersonas', 'fechaCierreInscripcion', 'created_at', 'updated_at']
     });
 
     res.json(cursos);
@@ -32,22 +32,11 @@ router.get("/area/:areaId", async (req, res) => {
   try {
     const { areaId } = req.params;
 
-    const areaIdInt = parseInt(areaId);
-
-    // Ahora usamos la tabla de relación cursos_areas para soportar
-    // cursos que pertenecen a múltiples áreas.
-    const cursos = await sequelize.query(
-      `SELECT c.id, c.nombre, c.descripcion, c.duracion, c.categoria, c.nivel,
-              c.areaId, c.usuarioId, c.created_at, c.updated_at
-       FROM cursos c
-       INNER JOIN cursos_areas ca ON ca.cursoId = c.id
-       WHERE ca.areaId = ?
-       ORDER BY c.created_at DESC`,
-      {
-        replacements: [areaIdInt],
-        type: QueryTypes.SELECT,
-      }
-    );
+    const cursos = await Curso.findAll({
+      where: { areaId: parseInt(areaId) },
+      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'fechaInicio', 'fechaFin', 'tipoLanzamiento', 'maxPersonas', 'fechaCierreInscripcion', 'created_at', 'updated_at'],
+      order: [['created_at', 'DESC']]
+    });
 
     res.json(cursos);
   } catch (error) {
@@ -80,19 +69,12 @@ router.get("/mios", verifyToken, async (req, res) => {
       return res.json([]);
     }
 
-    // Obtener solo los cursos vinculados al área del usuario
-    const cursos = await sequelize.query(
-      `SELECT c.id, c.nombre, c.descripcion, c.duracion, c.categoria, c.nivel,
-              c.areaId, c.usuarioId, c.created_at, c.updated_at
-       FROM cursos c
-       INNER JOIN cursos_areas ca ON ca.cursoId = c.id
-       WHERE ca.areaId = ?
-       ORDER BY c.created_at DESC`,
-      {
-        replacements: [usuario.areaId],
-        type: QueryTypes.SELECT,
-      }
-    );
+    // Obtener solo los cursos del área del usuario
+    const cursos = await Curso.findAll({
+      where: { areaId: usuario.areaId },
+      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'fechaInicio', 'fechaFin', 'tipoLanzamiento', 'maxPersonas', 'fechaCierreInscripcion', 'created_at', 'updated_at'],
+      order: [['created_at', 'DESC']]
+    });
 
     res.json(cursos);
   } catch (error) {
@@ -159,7 +141,7 @@ router.get("/:id/areas", async (req, res) => {
 router.post("/", verifyAdmin, async (req, res) => {
   try {
     const usuarioId = req.usuario?.id;
-    const { nombre, descripcion, duracion, categoria, nivel, areaId, areaIds } = req.body;
+    const { nombre, descripcion, duracion, categoria, nivel, areaId, fechaInicio, fechaFin, tipoLanzamiento, maxPersonas, fechaCierreInscripcion } = req.body;
 
     if (!usuarioId) {
       return res.status(401).json({
@@ -235,12 +217,18 @@ router.post("/", verifyAdmin, async (req, res) => {
       });
     }
 
-    // Validar que TODAS las áreas existen
-    const areasEncontradas = await Area.findAll({
-      where: { id: normalizedAreaIds },
-    });
+    // Validar tipoLanzamiento
+    const tiposLanzamientoValidos = ['fecha', 'cantidad', 'ambos'];
+    if (tipoLanzamiento && !tiposLanzamientoValidos.includes(tipoLanzamiento)) {
+      return res.status(400).json({
+        error: "Tipo de lanzamiento inválido",
+        code: "INVALID_LAUNCH_TYPE"
+      });
+    }
 
-    if (areasEncontradas.length !== normalizedAreaIds.length) {
+    // Validar que el areaId existe
+    const area = await Area.findByPk(areaId);
+    if (!area) {
       return res.status(400).json({
         error: "Una o más áreas especificadas no existen",
         code: "INVALID_AREA"
@@ -253,9 +241,13 @@ router.post("/", verifyAdmin, async (req, res) => {
       duracion,
       categoria,
       nivel,
-      // guardamos la primera área como área principal para compatibilidad
-      areaId: normalizedAreaIds[0],
-      usuarioId
+      areaId,
+      usuarioId,
+      fechaInicio: fechaInicio || null,
+      fechaFin: fechaFin || null,
+      tipoLanzamiento: tipoLanzamiento || 'fecha',
+      maxPersonas: maxPersonas || 0,
+      fechaCierreInscripcion: fechaCierreInscripcion || null
     });
 
     // 🔑 Obtener todos los usuarios de las áreas y vincularlos
@@ -289,6 +281,11 @@ router.post("/", verifyAdmin, async (req, res) => {
       nivel: nuevoCurso.nivel,
       areaId: nuevoCurso.areaId,
       usuarioId: nuevoCurso.usuarioId,
+      fechaInicio: nuevoCurso.fechaInicio,
+      fechaFin: nuevoCurso.fechaFin,
+      tipoLanzamiento: nuevoCurso.tipoLanzamiento,
+      maxPersonas: nuevoCurso.maxPersonas,
+      fechaCierreInscripcion: nuevoCurso.fechaCierreInscripcion,
       usuariosAsignados: usuariosDelArea.length,
       created_at: nuevoCurso.created_at,
       updated_at: nuevoCurso.updated_at
@@ -307,7 +304,7 @@ router.post("/", verifyAdmin, async (req, res) => {
 router.put("/:id", verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, duracion, categoria, nivel, areaId, areaIds } = req.body;
+    const { nombre, descripcion, duracion, categoria, nivel, areaId, fechaInicio, fechaFin, tipoLanzamiento, maxPersonas, fechaCierreInscripcion } = req.body;
 
     const curso = await Curso.findByPk(id);
     if (!curso) {
@@ -430,6 +427,34 @@ router.put("/:id", verifyAdmin, async (req, res) => {
       updateData.areaId = areaId;
     }
 
+    // Nuevos campos de fechas y lanzamiento
+    if (fechaInicio !== undefined) {
+      updateData.fechaInicio = fechaInicio || null;
+    }
+
+    if (fechaFin !== undefined) {
+      updateData.fechaFin = fechaFin || null;
+    }
+
+    if (tipoLanzamiento !== undefined) {
+      const tiposLanzamientoValidos = ['fecha', 'cantidad', 'ambos'];
+      if (!tiposLanzamientoValidos.includes(tipoLanzamiento)) {
+        return res.status(400).json({
+          error: "Tipo de lanzamiento inválido",
+          code: "INVALID_LAUNCH_TYPE"
+        });
+      }
+      updateData.tipoLanzamiento = tipoLanzamiento;
+    }
+
+    if (maxPersonas !== undefined) {
+      updateData.maxPersonas = maxPersonas || 0;
+    }
+
+    if (fechaCierreInscripcion !== undefined) {
+      updateData.fechaCierreInscripcion = fechaCierreInscripcion || null;
+    }
+
     // Actualizar timestamps
     updateData.updated_at = new Date();
 
@@ -484,6 +509,11 @@ router.put("/:id", verifyAdmin, async (req, res) => {
       nivel: curso.nivel,
       areaId: curso.areaId,
       usuarioId: curso.usuarioId,
+      fechaInicio: curso.fechaInicio,
+      fechaFin: curso.fechaFin,
+      tipoLanzamiento: curso.tipoLanzamiento,
+      maxPersonas: curso.maxPersonas,
+      fechaCierreInscripcion: curso.fechaCierreInscripcion,
       updated_at: curso.updated_at
     });
 

@@ -32,4 +32,3 @@ export default async function GetCourseAreas(courseId) {
     throw error;
   }
 }
-

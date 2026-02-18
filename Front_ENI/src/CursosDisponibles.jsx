@@ -123,9 +123,11 @@ export default function CursosDisponibles() {
       await EnrollCourse(courseId);
       alert("¡Te has inscrito exitosamente al curso!");
       await loadUserEnrollments(); // Recargar inscripciones
+      await loadCursos(usuario); // Recargar cursos para actualizar contador
     } catch (error) {
       console.error("Error inscribiéndose al curso:", error);
-      alert("Error al inscribirse al curso. Inténtalo de nuevo.");
+      const mensaje = error.message || "Error al inscribirse al curso. Inténtalo de nuevo.";
+      alert(mensaje);
     } finally {
       setEnrolling(null);
     }
@@ -200,6 +202,9 @@ export default function CursosDisponibles() {
               const activeEnrollment = getActiveEnrollmentByCourse(curso.id);
               const bloquearNuevaInscripcion = !enrolled && tieneInscripcionActivaFormador;
               const puedeReinscribirse = enrollment && enrollment.estado !== "activo";
+              const inscripcionesCerradas = curso.inscripcionesAbiertas === false;
+              const cupoLleno = curso.maxPersonas && curso.inscritosActivos >= curso.maxPersonas;
+              const fechaPasada = curso.fechaCierreInscripcion && new Date(curso.fechaCierreInscripcion) < new Date();
               return (
                 <div key={curso.id} className="curso-card">
                   <div className="curso-header">
@@ -215,6 +220,18 @@ export default function CursosDisponibles() {
                       <span><strong>Categoría:</strong> {curso.categoria}</span>
                       <span><strong>Duración:</strong> {curso.duracion} horas</span>
                       <span><strong>Área:</strong> {getAreaName(curso)}</span>
+                      {curso.maxPersonas && (
+                        <span>
+                          <strong>👥 Cupos:</strong> {curso.inscritosActivos || 0} / {curso.maxPersonas}
+                          {cupoLleno && <span style={{color: 'red', marginLeft: '5px'}}>❗ Lleno</span>}
+                        </span>
+                      )}
+                      {curso.fechaCierreInscripcion && (
+                        <span>
+                          <strong>📆 Cierre:</strong> {new Date(curso.fechaCierreInscripcion).toLocaleDateString('es-ES')}
+                          {fechaPasada && <span style={{color: 'red', marginLeft: '5px'}}>❗ Cerrado</span>}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -238,25 +255,29 @@ export default function CursosDisponibles() {
                       <button
                         className="btn-inscribirse"
                         onClick={() => handleEnroll(curso.id)}
-                        disabled={Boolean(enrolling) || bloquearNuevaInscripcion}
+                        disabled={Boolean(enrolling) || bloquearNuevaInscripcion || inscripcionesCerradas}
                       >
                         {Boolean(enrolling)
                           ? "Inscribiendo..."
-                          : bloquearNuevaInscripcion
-                            ? "Ya tienes un curso activo"
-                            : "Volver a inscribirme"}
+                          : inscripcionesCerradas
+                            ? (cupoLleno ? "Cupo lleno" : "Inscripciones cerradas")
+                            : bloquearNuevaInscripcion
+                              ? "Ya tienes un curso activo"
+                              : "Volver a inscribirme"}
                       </button>
                     ) : (
                       <button
                         className="btn-inscribirse"
                         onClick={() => handleEnroll(curso.id)}
-                        disabled={Boolean(enrolling) || bloquearNuevaInscripcion}
+                        disabled={Boolean(enrolling) || bloquearNuevaInscripcion || inscripcionesCerradas}
                       >
                         {Boolean(enrolling)
                           ? "Inscribiendo..."
-                          : bloquearNuevaInscripcion
-                            ? "Ya tienes un curso activo"
-                            : "Inscribirme"}
+                          : inscripcionesCerradas
+                            ? (cupoLleno ? "Cupo lleno" : "Inscripciones cerradas")
+                            : bloquearNuevaInscripcion
+                              ? "Ya tienes un curso activo"
+                              : "Inscribirme"}
                       </button>
                     )}
                   </div>

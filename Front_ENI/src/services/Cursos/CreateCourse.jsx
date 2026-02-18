@@ -24,11 +24,17 @@ export default function CreateCourse(formData) {
   const courseData = {
     nombre: formData.nombre,
     descripcion: formData.descripcion,
-    duracion: formData.duracion,
+    duracion: Number(formData.duracion),
     categoria: formData.categoria,
     nivel: formData.nivel,
+    areaId: areaIds.length ? Number(areaIds[0]) : undefined,
     // Nuevo campo para múltiples áreas
     areaIds,
+    fechaInicio: formData.fechaInicio || null,
+    fechaFin: formData.fechaFin || null,
+    tipoLanzamiento: formData.tipoLanzamiento || "fecha",
+    maxPersonas: formData.maxPersonas ? Number(formData.maxPersonas) : null,
+    fechaCierreInscripcion: formData.fechaCierreInscripcion || null,
   };
 
   return fetch("http://localhost:3000/api/cursos", {

@@ -5,6 +5,7 @@ import CreateCourse from "./services/Cursos/CreateCourse";
 import UpdateCourse from "./services/Cursos/UpdateCourse";
 import DeleteCourse from "./services/Cursos/DeleteCourse";
 import GetCourseAreas from "./services/Cursos/GetCourseAreas";
+import GetCourseEnrollments from "./services/Inscripciones/GetCourseEnrollments";
 
 export default function GestionCursos() {
   const navigate = useNavigate();
@@ -16,6 +17,9 @@ export default function GestionCursos() {
   const [areas, setAreas] = useState([]);
   const [areasSeleccionadas, setAreasSeleccionadas] = useState([]);
   const [areaSeleccionTemporal, setAreaSeleccionTemporal] = useState("");
+  const [showEnrollments, setShowEnrollments] = useState(false);
+  const [currentEnrollments, setCurrentEnrollments] = useState([]);
+  const [currentCourseTitle, setCurrentCourseTitle] = useState("");
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
@@ -196,6 +200,18 @@ export default function GestionCursos() {
       ...formData,
       [name]: processedValue
     });
+  };
+
+  const handleViewEnrollments = async (curso) => {
+    try {
+      const data = await GetCourseEnrollments(curso.id);
+      setCurrentEnrollments(data.inscritos || []);
+      setCurrentCourseTitle(curso.nombre);
+      setShowEnrollments(true);
+    } catch (error) {
+      console.error("Error cargando inscritos:", error);
+      alert("No se pudieron cargar los inscritos del curso");
+    }
   };
 
   if (!usuario) return <p>Cargando...</p>;
@@ -612,6 +628,34 @@ export default function GestionCursos() {
                       )}
                     </div>
                     
+                    {/* Contador de inscritos */}
+                    <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid #e0e0e0' }}>
+                      <div className="info-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <span className="info-icon">👥</span>
+                          <span style={{ marginLeft: '0.5rem' }}>
+                            <strong>Inscritos activos:</strong> {curso.inscritosActivos || 0}
+                            {curso.maxPersonas ? ` / ${curso.maxPersonas}` : ''}
+                          </span>
+                        </div>
+                        {(curso.inscritosActivos > 0) && (
+                          <button 
+                            className="btn-editar" 
+                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem', margin: 0 }}
+                            onClick={() => handleViewEnrollments(curso)}
+                            type="button"
+                          >
+                            Ver lista
+                          </button>
+                        )}
+                      </div>
+                      {curso.cuposDisponibles !== null && curso.cuposDisponibles === 0 && (
+                        <span style={{ color: 'red', fontSize: '0.85rem', marginTop: '0.3rem', display: 'block' }}>
+                          ⚠️ Cupo lleno
+                        </span>
+                      )}
+                    </div>
+                    
                     {/* Badge de tipo de lanzamiento */}
                     {curso.tipoLanzamiento && (
                       <div style={{ marginTop: '0.8rem' }}>
@@ -638,6 +682,107 @@ export default function GestionCursos() {
           )}
         </div>
       </main>
+
+      {/* Modal de inscritos */}
+      {showEnrollments && (
+        <div className="modal-overlay" onClick={() => setShowEnrollments(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <h3 style={{ 
+              color: '#2c3e50', 
+              borderBottom: '3px solid #3498db', 
+              paddingBottom: '0.8rem',
+              marginBottom: '1.5rem'
+            }}>
+              👥 Inscritos en: {currentCourseTitle}
+            </h3>
+            {currentEnrollments.length === 0 ? (
+              <p style={{ 
+                textAlign: 'center', 
+                padding: '2rem', 
+                color: '#666',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #dee2e6'
+              }}>
+                No hay inscritos activos en este curso.
+              </p>
+            ) : (
+              <div>
+                <div style={{ 
+                  backgroundColor: '#f1f3f5',
+                  padding: '0.8rem',
+                  borderRadius: '8px 8px 0 0',
+                  marginBottom: '0.5rem'
+                }}>
+                  <strong style={{ color: '#495057' }}>
+                    Total de inscritos: {currentEnrollments.length}
+                  </strong>
+                </div>
+                <div style={{ 
+                  maxHeight: '400px', 
+                  overflowY: 'auto',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '0 0 8px 8px'
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ 
+                        backgroundColor: '#4a90e2',
+                        color: 'white',
+                        textAlign: 'left',
+                        position: 'sticky',
+                        top: 0
+                      }}>
+                        <th style={{ padding: '1rem', fontWeight: '600' }}>Nombre Completo</th>
+                        <th style={{ padding: '1rem', fontWeight: '600' }}>Correo Electrónico</th>
+                        <th style={{ padding: '1rem', fontWeight: '600', textAlign: 'center' }}>Fecha Inscripción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentEnrollments.map((inscripcion, index) => (
+                        <tr 
+                          key={inscripcion.id || index} 
+                          style={{ 
+                            backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa',
+                            borderBottom: '1px solid #dee2e6',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e7f3ff'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#f8f9fa'}
+                        >
+                          <td style={{ padding: '1rem', color: '#2c3e50', fontWeight: '500' }}>
+                            {inscripcion.usuario.nombre} {inscripcion.usuario.apellido}
+                          </td>
+                          <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#495057' }}>
+                            {inscripcion.usuario.email}
+                          </td>
+                          <td style={{ 
+                            padding: '1rem', 
+                            fontSize: '0.9rem', 
+                            color: '#6c757d',
+                            textAlign: 'center'
+                          }}>
+                            {new Date(inscripcion.fecha_inscripcion).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: '2-digit', 
+                              year: 'numeric'
+                            })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button className="btn-cancelar" onClick={() => setShowEnrollments(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

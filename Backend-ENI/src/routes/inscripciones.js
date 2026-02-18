@@ -1,6 +1,7 @@
 import express from "express";
 import { Inscripcion } from "../database/models/inscripciones.js";
 import { Curso } from "../database/models/cursos.js";
+import { Usuario } from "../database/models/usuarios.js";
 import { sequelize } from "../database/config.js";
 import verifyToken from "../middleware/verifyToken.js";
 
@@ -34,6 +35,34 @@ router.post("/", verifyToken, async (req, res) => {
         "SELECT id FROM usuarios WHERE id = ? FOR UPDATE",
         { replacements: [usuario_id], transaction }
       );
+
+      // 🔒 Validar fecha de cierre de inscripciones
+      if (curso.fechaCierreInscripcion) {
+        const fechaCierre = new Date(curso.fechaCierreInscripcion);
+        const ahora = new Date();
+        if (ahora > fechaCierre) {
+          const error = new Error("El período de inscripciones para este curso ha cerrado");
+          error.code = "ENROLLMENT_CLOSED";
+          throw error;
+        }
+      }
+
+      // 🔒 Validar cupo máximo de personas
+      if (curso.maxPersonas && curso.maxPersonas > 0) {
+        const inscritosActivos = await Inscripcion.count({
+          where: {
+            curso_id,
+            estado: "activo",
+          },
+          transaction,
+        });
+
+        if (inscritosActivos >= curso.maxPersonas) {
+          const error = new Error(`El curso ha alcanzado su cupo máximo (${curso.maxPersonas} personas)`);
+          error.code = "COURSE_FULL";
+          throw error;
+        }
+      }
 
       const inscripcionExistente = await Inscripcion.findOne({
         where: {
@@ -99,6 +128,14 @@ router.post("/", verifyToken, async (req, res) => {
     }
 
     if (error?.code === "SINGLE_ACTIVE_ENROLLMENT") {
+      return res.status(409).json({ error: error.message, code: error.code });
+    }
+
+    if (error?.code === "ENROLLMENT_CLOSED") {
+      return res.status(409).json({ error: error.message, code: error.code });
+    }
+
+    if (error?.code === "COURSE_FULL") {
       return res.status(409).json({ error: error.message, code: error.code });
     }
 
@@ -191,6 +228,62 @@ router.patch("/:id/cancelar", verifyToken, async (req, res) => {
   } catch (error) {
     console.error("Error al cancelar inscripción:", error);
     return res.status(500).json({
+      error: "Error interno del servidor",
+      code: "INTERNAL_ERROR"
+    });
+  }
+});
+
+// GET /api/inscripciones/curso/:cursoId - Obtener inscritos activos de un curso (admin)
+router.get("/curso/:cursoId", verifyToken, async (req, res) => {
+  try {
+    const { cursoId } = req.params;
+
+    if (req.usuario.rol !== "Administrador") {
+      return res.status(403).json({
+        error: "Solo administradores pueden ver los inscritos",
+        code: "FORBIDDEN"
+      });
+    }
+
+    const inscripciones = await Inscripcion.findAll({
+      where: {
+        curso_id: Number(cursoId),
+        estado: "activo"
+      },
+      include: [{
+        model: Usuario,
+        as: "usuario",
+        attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"]
+      }],
+      order: [["fecha_inscripcion", "ASC"]],
+      attributes: ["id", "usuario_id", "curso_id", "fecha_inscripcion", "estado"]
+    });
+
+    const resultado = inscripciones.map(inscripcion => ({
+      id: inscripcion.id,
+      usuario_id: inscripcion.usuario_id,
+      curso_id: inscripcion.curso_id,
+      fecha_inscripcion: inscripcion.fecha_inscripcion,
+      estado: inscripcion.estado,
+      usuario: inscripcion.usuario ? {
+        id: inscripcion.usuario.id,
+        nombre: inscripcion.usuario.nombre,
+        apellido: inscripcion.usuario.apellido,
+        email: inscripcion.usuario.email,
+        rol: inscripcion.usuario.rol,
+        areaId: inscripcion.usuario.areaId
+      } : null
+    }));
+
+    res.json({
+      total: resultado.length,
+      inscritos: resultado
+    });
+
+  } catch (error) {
+    console.error("Error al obtener inscritos:", error);
+    res.status(500).json({
       error: "Error interno del servidor",
       code: "INTERNAL_ERROR"
     });

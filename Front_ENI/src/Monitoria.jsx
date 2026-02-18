@@ -8,6 +8,14 @@ export default function Monitoria() {
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState("todos"); // todos, pendientes, con-evidencia
 
+  const normalizarLista = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.usuarios)) return payload.usuarios;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+  };
+
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
     const token = localStorage.getItem("token");
@@ -32,26 +40,40 @@ export default function Monitoria() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dataUsuarios = await resUsuarios.json();
+      if (!resUsuarios.ok) {
+        throw new Error(dataUsuarios?.mensaje || "No se pudieron cargar los usuarios");
+      }
 
       // Cargar todos los cursos
       const resCursos = await fetch("http://localhost:3000/api/cursos", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dataCursos = await resCursos.json();
+      if (!resCursos.ok) {
+        throw new Error(dataCursos?.mensaje || "No se pudieron cargar los cursos");
+      }
 
       // Cargar todas las evidencias/archivos
       const resEvidencias = await fetch("http://localhost:3000/api/archivos", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dataEvidencias = await resEvidencias.json();
+      if (!resEvidencias.ok) {
+        throw new Error(dataEvidencias?.message || "No se pudieron cargar las evidencias");
+      }
+
+      const usuariosList = normalizarLista(dataUsuarios);
+      const cursosList = normalizarLista(dataCursos);
+      const evidenciasList = normalizarLista(dataEvidencias);
 
       // Filtrar solo formadores
-      const formadoresList = dataUsuarios.filter(u => u.rol === "Formador");
+      const formadoresList = usuariosList.filter(u => u.rol === "Formador");
 
       // Procesar formadores sin evidencias
-      procesarFormadoresSinEvidencias(formadoresList, dataCursos, dataEvidencias.data || dataEvidencias);
+      procesarFormadoresSinEvidencias(formadoresList, cursosList, evidenciasList);
     } catch (error) {
       console.error("Error al cargar datos:", error);
+      setFormadoresSinEvidencias([]);
     } finally {
       setCargando(false);
     }

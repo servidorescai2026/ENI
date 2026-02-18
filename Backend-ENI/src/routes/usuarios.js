@@ -163,9 +163,27 @@ router.post("/login", verifyCaptcha, async (req, res) => {
 
 router.get("/perfil", verifyToken, async (req, res) => {
   const usuario = await Usuario.findByPk(req.usuario.id, {
-    attributes: ["id", "nombre", "apellido", "email", "rol", "categoria"],
+    attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"],
   });
   res.json({ mensaje: "Acceso autorizado", usuario });
+});
+
+router.get("/", verifyToken, async (req, res) => {
+  try {
+    if (req.usuario.rol !== "Administrador") {
+      return res.status(403).json({ mensaje: "No tienes permiso para ver usuarios" });
+    }
+
+    const usuarios = await Usuario.findAll({
+      attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"],
+      order: [["nombre", "ASC"], ["apellido", "ASC"]],
+    });
+
+    return res.json(usuarios);
+  } catch (error) {
+    console.error("Error al listar usuarios:", error);
+    return res.status(500).json({ mensaje: "Error al obtener usuarios", error: error.message });
+  }
 });
 
 router.delete("/eliminar/:id", verifyToken, async (req, res) => {

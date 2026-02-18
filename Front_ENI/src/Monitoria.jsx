@@ -259,7 +259,7 @@ export default function Monitoria() {
                 <div className="card-footer">
                   <button 
                     className="btn-detalle"
-                    onClick={() => navigate(`/gestion-usuarios`)}
+                    onClick={() => navigate(`/gestion-cursos`)}
                   >
                     Ver detalles
                   </button>

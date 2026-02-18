@@ -657,7 +657,7 @@ footer a:hover {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 3rem 2rem;
+  padding: 3rem 2rem 100px 2rem;
 }
 
 .usuario-card {
@@ -823,7 +823,7 @@ footer a:hover {
 .admin-main {
   margin-top: 100px;
   text-align: center;
-  padding: 20px;
+  padding: 20px 20px 100px 20px;
   min-height: calc(100vh - 200px);
 }
 
@@ -903,12 +903,18 @@ footer a:hover {
   position: fixed;
   bottom: 0;
   left: 0;
+  right: 0;
   width: 100%;
   text-align: center;
-  padding: 15px;
-  background: rgba(13, 26, 51, 0.8);
-  color: #9ab6ff;
-  backdrop-filter: blur(5px);
+  padding: 18px 20px;
+  background: linear-gradient(180deg, rgba(13, 26, 51, 0.95) 0%, #0a1525 100%);
+  color: #a8d8ff;
+  border-top: 2px solid #4a90e2;
+  z-index: 999;
+  font-size: 0.95rem;
+  font-weight: 500;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
 }
 
 /* ========== Notificaciones por área ========== */
@@ -917,7 +923,7 @@ footer a:hover {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 4rem 1.5rem;
+  padding: 4rem 1.5rem 100px 1.5rem;
 }
 
 .notificacion-card {

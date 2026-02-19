@@ -64,7 +64,7 @@ export default function MisNotificaciones() {
   return (
 
     <div className="notificacion-page">
-      <div className="notificacion-card">
+      <div className="notificacion-card mis-notificaciones-card">
         <h2 className="notificacion-title">
           📩 Mis notificaciones {noLeidas > 0 && `(${noLeidas} sin leer)`}
         </h2>
@@ -77,7 +77,7 @@ export default function MisNotificaciones() {
         {estado && <p className="notificacion-estado">{estado}</p>}
 
         {notificaciones.length === 0 ? (
-          <p>No tienes notificaciones.</p>
+          <p className="notificaciones-empty">No tienes notificaciones.</p>
         ) : (
           <ul className="notificaciones-list">
             {notificaciones.map((n) => {
@@ -89,15 +89,16 @@ export default function MisNotificaciones() {
                     n.leida ? "notificacion-item leida" : "notificacion-item no-leida"
                   }
                 >
-                  <div>
-                    <strong>{n.asunto}</strong>
-                    <p>{n.mensaje}</p>
+                  <div className="notificacion-content">
+                    <strong className="notificacion-asunto">{n.asunto}</strong>
+                    <p className="notificacion-mensaje">{n.mensaje}</p>
 
                     {archivos.length > 0 && (
-                      <ul style={{ marginTop: "0.5rem" }}>
+                      <ul className="notificacion-archivos-list">
                         {archivos.map((ruta, idx) => (
-                          <li key={idx}>
+                          <li key={idx} className="notificacion-archivo-item">
                             <a
+                              className="notificacion-archivo-link"
                               href={`http://localhost:3000/${ruta}`}
                               target="_blank"
                               rel="noreferrer"
@@ -109,7 +110,7 @@ export default function MisNotificaciones() {
                       </ul>
                     )}
 
-                    <small>
+                    <small className="notificacion-fecha">
                       {new Date(n.creadaEn).toLocaleString("es-CO", {
                         dateStyle: "short",
                         timeStyle: "short",
@@ -119,7 +120,7 @@ export default function MisNotificaciones() {
 
                   {!n.leida && (
                     <button
-                      className="btn-anim"
+                      className="notificacion-btn"
                       type="button"
                       onClick={() => marcarLeida(n.id)}>
 
@@ -133,10 +134,10 @@ export default function MisNotificaciones() {
           </ul>
         )}
 
-        <div className="notificacion-actions" style={{ marginTop: "1.5rem" }}>
+        <div className="notificacion-actions notificacion-actions-bottom">
           <button
             type="button"
-            className="btn-anim btn-cerrar"
+            className="notificacion-btn notificacion-btn-cerrar"
             onClick={() => navigate(esAdmin ? "/administrador" : "/usuario")}>
             Volver a mi panel
           </button>

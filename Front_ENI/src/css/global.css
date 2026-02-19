@@ -178,6 +178,7 @@ footer a:hover {
   flex-direction: column;
   background: radial-gradient(circle at center, #1a237e 0%, var(--bg) 100%);
   color: white;
+  padding-top: 96px;
 }
 
 /* Navbar: Texto grande y centrado absoluto */
@@ -185,8 +186,10 @@ footer a:hover {
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-  /* Necesario para el centrado del hijo */
+  width: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1030;
 }
 
 .titulo-principal-navbar {
@@ -228,10 +231,7 @@ footer a:hover {
   /* Centrado vertical exacto */
   position: relative;
   text-align: center;
-  padding: 0 20px;
-  /* Reduje el padding vertical para que no empuje el contenido */
-  min-height: calc(100vh - 150px);
-  /* Ajusta el alto restando Navbar y Footer */
+  padding: 24px 20px;
   width: 100%;
 }
 
@@ -298,6 +298,8 @@ footer a:hover {
   background: rgba(0, 0, 0, 0.4);
   padding: 40px 0;
   text-align: center;
+  margin-top: auto;
+  width: 100%;
 }
 
 .social-link {
@@ -720,29 +722,31 @@ footer a:hover {
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 100;
-  padding: 15px 20px;
+  padding: 10px 8px;
 }
 
 .admin-top {
-  
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  max-width: 1400px;
-  margin: 0 auto;
-  flex-wrap: wrap;
-  gap: 15px;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  flex-wrap: nowrap;
+  gap: 10px;
 }
 
 .admin-welcome {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+  text-align: left;
   animation: fadeIn 1.3s ease;
 }
 
 .welcome-text {
-  font-size: 1.7rem;
+  font-size: 1.35rem;
   font-weight: bold;
   color: #d6e3ff;
   animation: floatText 3s infinite ease-in-out;
@@ -755,7 +759,44 @@ footer a:hover {
 
 .header-buttons {
   display: flex;
-  gap: 16px;
+  gap: 10px;
+}
+
+.admin-header .header-buttons {
+  margin-left: auto;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.admin-header .welcome-text,
+.admin-header .btn-anim span {
+  white-space: nowrap;
+}
+
+.admin-header .btn-anim {
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.admin-header .btn-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .btn-anim {
@@ -824,6 +865,7 @@ footer a:hover {
   margin-top: 100px;
   text-align: center;
   padding: 20px 20px 100px 20px;
+  flex: 1;
   min-height: calc(100vh - 200px);
 }
 
@@ -900,10 +942,8 @@ footer a:hover {
 }
 
 .admin-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: static;
+  margin-top: auto;
   width: 100%;
   text-align: center;
   padding: 18px 20px;
@@ -994,6 +1034,127 @@ footer a:hover {
 .notificacion-estado {
   margin-top: 1rem;
   font-size: 0.9rem;
+}
+
+.mis-notificaciones-card {
+  max-width: 980px;
+}
+
+.notificaciones-empty {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  color: #e8eeff;
+}
+
+.notificaciones-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.notificacion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.notificacion-item.no-leida {
+  border-left: 4px solid #ffca28;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.notificacion-item.leida {
+  opacity: 0.9;
+}
+
+.notificacion-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notificacion-asunto {
+  display: block;
+  font-size: 1.02rem;
+  color: #ffffff;
+  margin-bottom: 0.35rem;
+}
+
+.notificacion-mensaje {
+  margin: 0 0 0.65rem;
+  line-height: 1.45;
+  color: #e5ebff;
+}
+
+.notificacion-archivos-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0.65rem;
+  padding: 0;
+}
+
+.notificacion-archivo-item {
+  margin: 0;
+}
+
+.notificacion-archivo-link {
+  display: inline-block;
+  text-decoration: none;
+  color: #0b102f;
+  background: #ffca28;
+  border-radius: 999px;
+  padding: 0.32rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.notificacion-archivo-link:hover {
+  filter: brightness(0.95);
+}
+
+.notificacion-fecha {
+  display: inline-block;
+  color: #b9c8ff;
+  font-size: 0.82rem;
+}
+
+.notificacion-btn {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4fc3f7, #1e88e5);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 0.6rem 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.notificacion-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.3);
+}
+
+.notificacion-btn-cerrar {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+.notificacion-actions-bottom {
+  margin-top: 1.5rem;
 }
 
 /* ========== Gestión de cursos (admin) ========== */
@@ -1978,8 +2139,37 @@ footer a:hover {
   }
 
   .admin-welcome {
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .admin-top {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  .admin-header .header-buttons {
+    display: none;
+    margin-left: 0;
+    justify-content: flex-start;
     flex-direction: column;
-    text-align: center;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .admin-header .header-buttons.active {
+    display: flex;
+  }
+
+  .admin-header .header-buttons .btn-anim {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    margin-left: 0;
   }
 
   .notificacion-card {
@@ -1988,6 +2178,17 @@ footer a:hover {
 
   .notificacion-title {
     font-size: 1.6rem;
+  }
+
+  .notificacion-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notificacion-btn,
+  .notificacion-btn-cerrar {
+    width: 100%;
+    justify-content: center;
   }
 
   .gestion-cursos-main {

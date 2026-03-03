@@ -336,7 +336,11 @@ router.post("/subir-evidencia", verifyToken, uploadEvidencias.array("archivos", 
       });
     }
 
-    const { descripcion = "" } = req.body;
+    const {
+      descripcion = "",
+      nombreCarpeta = "",
+      nombreCarpetaPrincipal = "",
+    } = req.body;
     const archivosSubidos = req.files || [];
 
     if (archivosSubidos.length === 0) {
@@ -368,7 +372,10 @@ router.post("/subir-evidencia", verifyToken, uploadEvidencias.array("archivos", 
     const driveRequired = process.env.GOOGLE_DRIVE_REQUIRED === "true";
 
     try {
-      const driveResult = await uploadEvidenciasToDrive(archivosSubidos, nombreUsuario);
+      const driveResult = await uploadEvidenciasToDrive(archivosSubidos, nombreUsuario, {
+        userFolderName: nombreCarpeta,
+        mainFolderName: nombreCarpetaPrincipal,
+      });
       evidenciasLink = driveResult.folderLink;
       enlacesArchivos = (driveResult.files || []).map((item) => item.url).filter(Boolean);
     } catch (driveError) {

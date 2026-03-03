@@ -20,7 +20,7 @@ dotenv.config();
 
 const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || "YOUR_CLIENT_ID";
 const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET || "YOUR_CLIENT_SECRET";
-const REDIRECT_URI = process.env.GOOGLE_OAUTH_REDIRECT_URI || "http://localhost:3000";
+const REDIRECT_URI = process.env.GOOGLE_OAUTH_REDIRECT_URI || "http://localhost:3000/auth/callback";
 
 const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
@@ -147,15 +147,22 @@ async function getRefreshToken() {
       console.log("\n📋 Credenciales obtenidas:");
       console.log(`GOOGLE_OAUTH_REFRESH_TOKEN=${tokens.refresh_token}`);
 
-      // Actualizar .env automáticamente si existe
+      // Actualizar .env automáticamente si existe; si no existe la variable, agregarla
       if (fs.existsSync(".env")) {
         let envContent = fs.readFileSync(".env", "utf8");
-        envContent = envContent.replace(
-          /GOOGLE_OAUTH_REFRESH_TOKEN=.*/,
-          `GOOGLE_OAUTH_REFRESH_TOKEN=${tokens.refresh_token}`
-        );
+        if (/^GOOGLE_OAUTH_REFRESH_TOKEN=.*/m.test(envContent)) {
+          envContent = envContent.replace(
+            /^GOOGLE_OAUTH_REFRESH_TOKEN=.*/m,
+            `GOOGLE_OAUTH_REFRESH_TOKEN=${tokens.refresh_token}`
+          );
+        } else {
+          envContent = `${envContent.trimEnd()}\nGOOGLE_OAUTH_REFRESH_TOKEN=${tokens.refresh_token}\n`;
+        }
         fs.writeFileSync(".env", envContent);
         console.log("\n✅ Archivo .env actualizado automáticamente con el refresh token");
+      } else {
+        console.log("\n⚠️ No existe .env. Crea uno y agrega esta línea:");
+        console.log(`GOOGLE_OAUTH_REFRESH_TOKEN=${tokens.refresh_token}`);
       }
 
       server.close();

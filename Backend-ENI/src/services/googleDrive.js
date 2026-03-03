@@ -10,6 +10,37 @@ dotenv.config();
  * Servicio de Google Drive con soporte para autenticación por Service Account y OAuth2
  */
 
+function normalizeEnvValue(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.trim().replace(/^['\"]|['\"]$/g, "");
+}
+
+function sanitizeFolderName(value, fallback) {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/\s+/g, " ");
+
+  return cleaned || fallback;
+}
+
+function getOAuthEnv() {
+  return {
+    clientId: normalizeEnvValue(process.env.GOOGLE_OAUTH_CLIENT_ID),
+    clientSecret: normalizeEnvValue(process.env.GOOGLE_OAUTH_CLIENT_SECRET),
+    refreshToken: normalizeEnvValue(process.env.GOOGLE_OAUTH_REFRESH_TOKEN),
+    redirectUri:
+      normalizeEnvValue(process.env.GOOGLE_OAUTH_REDIRECT_URI) ||
+      "http://localhost:3000/auth/callback",
+  };
+}
+
+function isInvalidGrantError(error) {
+  const message = error?.message || "";
+  const apiMessage = error?.response?.data?.error || "";
+  return String(message).includes("invalid_grant") || String(apiMessage).includes("invalid_grant");
+}
+
 function hasServiceAccountConfig() {
   try {
     const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -23,31 +54,49 @@ function hasServiceAccountConfig() {
 }
 
 function hasOAuthConfig() {
+  const { clientId, clientSecret, refreshToken } = getOAuthEnv();
   return (
-    process.env.GOOGLE_OAUTH_CLIENT_ID &&
-    process.env.GOOGLE_OAUTH_CLIENT_SECRET &&
-    process.env.GOOGLE_OAUTH_REFRESH_TOKEN
+    Boolean(clientId) &&
+    Boolean(clientSecret) &&
+    Boolean(refreshToken)
   );
 }
 
-function createDriveAuth() {
+function createOAuthClient() {
+  const { clientId, clientSecret, refreshToken, redirectUri } = getOAuthEnv();
+
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  oauth2Client.setCredentials({
+    refresh_token: refreshToken,
+  });
+
+  return oauth2Client;
+}
+
+function createServiceAccountAuth() {
+  return new google.auth.GoogleAuth({
+    keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    scopes: ["https://www.googleapis.com/auth/drive"],
+  });
+}
+
+async function createDriveClient() {
   // Intenta OAuth2 primero (mejor para Service Accounts sin cuota)
   if (hasOAuthConfig()) {
     try {
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_OAUTH_CLIENT_ID,
-        process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-        process.env.GOOGLE_OAUTH_REDIRECT_URI || "http://localhost:3000/auth/callback"
-      );
-
-      oauth2Client.setCredentials({
-        refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
-      });
+      const oauth2Client = createOAuthClient();
+      await oauth2Client.getAccessToken();
 
       console.log("✅ Usando OAuth2 para Google Drive");
-      return oauth2Client;
+      return google.drive({ version: "v3", auth: oauth2Client });
     } catch (e) {
-      console.warn("⚠️ OAuth2 no disponible:", e.message);
+      if (isInvalidGrantError(e)) {
+        console.warn(
+          "⚠️ OAuth2 no disponible: refresh token inválido/revocado (invalid_grant)."
+        );
+      } else {
+        console.warn("⚠️ OAuth2 no disponible:", e.message);
+      }
     }
   }
 
@@ -55,16 +104,16 @@ function createDriveAuth() {
   if (hasServiceAccountConfig()) {
     try {
       console.log("✅ Usando Service Account para Google Drive");
-      return new google.auth.GoogleAuth({
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-        scopes: ["https://www.googleapis.com/auth/drive"],
-      });
+      const auth = createServiceAccountAuth();
+      return google.drive({ version: "v3", auth });
     } catch (e) {
       console.warn("⚠️ Service Account no disponible:", e.message);
     }
   }
 
-  return null;
+  throw new Error(
+    "Google Drive no configurado correctamente. Si usas OAuth2, regenera GOOGLE_OAUTH_REFRESH_TOKEN con 'npm run oauth:drive-token'."
+  );
 }
 
 /**
@@ -74,23 +123,21 @@ function createDriveAuth() {
  * @returns {Promise<{folderLink: string | null, files: {url: string, fileId: string}[]}>} Enlace de carpeta y URLs públicas
  * @throws {Error} Si hay error de configuración o subida
  */
-export async function uploadEvidenciasToDrive(archivos, nombreUsuario) {
+export async function uploadEvidenciasToDrive(archivos, nombreUsuario, options = {}) {
   if (!archivos || !Array.isArray(archivos)) {
     throw new Error("No hay archivos para subir");
   }
 
-  const auth = createDriveAuth();
-  if (!auth) {
-    throw new Error("Credenciales de Google Drive no configuradas (falta GOOGLE_OAUTH_REFRESH_TOKEN o GOOGLE_APPLICATION_CREDENTIALS)");
-  }
-
-  const drive = google.drive({ version: "v3", auth });
+  const drive = await createDriveClient();
+  const mainFolderName = sanitizeFolderName(options.mainFolderName, "Evidencias_ENI");
+  const defaultUserFolderName = `${nombreUsuario}_${Date.now()}`;
+  const userFolderName = sanitizeFolderName(options.userFolderName, defaultUserFolderName);
   
   // Obtener o crear carpeta principal "Evidencias_ENI"
   let mainFolderId;
   try {
     const mainRes = await drive.files.list({
-      q: "name='Evidencias_ENI' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+      q: `name='${mainFolderName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       spaces: "drive",
       fields: "files(id)",
       pageSize: 1,
@@ -103,13 +150,13 @@ export async function uploadEvidenciasToDrive(archivos, nombreUsuario) {
       // Crear carpeta si no existe
       const createRes = await drive.files.create({
         requestBody: {
-          name: "Evidencias_ENI",
+          name: mainFolderName,
           mimeType: "application/vnd.google-apps.folder",
         },
         fields: "id",
       });
       mainFolderId = createRes.data.id;
-      console.log(`✅ Carpeta Evidencias_ENI creada: ${mainFolderId}`);
+      console.log(`✅ Carpeta ${mainFolderName} creada: ${mainFolderId}`);
     }
   } catch (folderErr) {
     console.warn("⚠️ No se pudo usar carpeta principal, usando raíz de Drive", folderErr.message);
@@ -118,7 +165,6 @@ export async function uploadEvidenciasToDrive(archivos, nombreUsuario) {
 
   // Crear carpeta del usuario dentro de la carpeta principal
   let userFolderId = mainFolderId;
-  const userFolderName = `${nombreUsuario}_${Date.now()}`;
   
   try {
     const folderRes = await drive.files.create({

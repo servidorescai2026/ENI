@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 export default function SubirEvidencias() {
   const navigate = useNavigate();
   const [descripcion, setDescripcion] = useState("");
+  const [nombreCarpeta, setNombreCarpeta] = useState("");
+  const [nombreCarpetaPrincipal, setNombreCarpetaPrincipal] = useState("");
   const [archivos, setArchivos] = useState([{ id: 1, file: null }]);
   const [estado, setEstado] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -44,6 +46,8 @@ export default function SubirEvidencias() {
     try {
       const formData = new FormData();
       formData.append("descripcion", descripcion);
+      formData.append("nombreCarpeta", nombreCarpeta);
+      formData.append("nombreCarpetaPrincipal", nombreCarpetaPrincipal);
       archivosConFile.forEach((a) => {
         formData.append("archivos", a.file);
       });
@@ -61,6 +65,8 @@ export default function SubirEvidencias() {
       if (res.ok) {
         setEstado(`✅ ${data.mensaje}`);
         setDescripcion("");
+        setNombreCarpeta("");
+        setNombreCarpetaPrincipal("");
         setArchivos([{ id: Date.now(), file: null }]);
       } else {
         setEstado(`❌ ${data.mensaje || "Error al subir evidencia"}`);
@@ -89,6 +95,30 @@ export default function SubirEvidencias() {
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             rows={3}
+          />
+        </div>
+
+        <div className="form-group" style={{ marginTop: "1rem" }}>
+          <label>Nombre de carpeta en Drive (opcional)</label>
+          <input
+            className="input-control"
+            type="text"
+            placeholder="Ej: Evidencias_Alejandro_03032026"
+            value={nombreCarpeta}
+            onChange={(e) => setNombreCarpeta(e.target.value)}
+            maxLength={120}
+          />
+        </div>
+
+        <div className="form-group" style={{ marginTop: "1rem" }}>
+          <label>Carpeta principal en Drive (opcional)</label>
+          <input
+            className="input-control"
+            type="text"
+            placeholder="Ej: ENI_Evidencias"
+            value={nombreCarpetaPrincipal}
+            onChange={(e) => setNombreCarpetaPrincipal(e.target.value)}
+            maxLength={120}
           />
         </div>
 

@@ -780,6 +780,15 @@ footer a:hover {
   font-size: 0.88rem;
 }
 
+.admin-header .btn-anim::before {
+  display: none;
+}
+
+.admin-header .btn-anim:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
 .menu-toggle {
   display: none;
   align-items: center;
@@ -4530,6 +4539,7 @@ footer a:hover {
   animation: pulse-badge 2s infinite;
   z-index: 100;
   border: 2px solid #fff;
+  pointer-events: none;
 }
 
 @keyframes pulse-badge {

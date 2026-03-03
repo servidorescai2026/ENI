@@ -6,9 +6,8 @@ import cursoRoutes from "./routes/cursos.js";
 import inscripcionRoutes from "./routes/inscripciones.js";
 import archivoRoutes from "./routes/archivos.js";
 import { conectarDB, sequelize } from "./database/config.js";
-import { Usuario } from "./database/models/usuarios.js";
 import areaRoutes from "./routes/areas.js";
-
+import evidenciasRoutes from "./routes/evidencias.js";
 
 dotenv.config();
 
@@ -27,13 +26,9 @@ app.use("/uploads", express.static("uploads")); // para que puedas ver las imág
 // Conectar a BD
 conectarDB();
 
-// Sincronizar modelos con tabla (crea si no existe)
-sequelize.sync().then(() => {
-  console.log("🗂️ Modelos sincronizados con MySQL");
-});
-
-// Asegurar existencia de tabla de relación cursos_usuarios (evita ER_NO_SUCH_TABLE)
+// Sincronizar modelos y crear tabla de relación cursos_usuarios
 sequelize.sync().then(async () => {
+  console.log("🗂️ Modelos sincronizados con MySQL");
   try {
     await sequelize.query(`
       CREATE TABLE IF NOT EXISTS cursos_usuarios (
@@ -59,7 +54,7 @@ app.use("/api/areas", areaRoutes);
 app.use("/api/cursos", cursoRoutes);
 app.use("/api/inscripciones", inscripcionRoutes);
 app.use("/api/archivos", archivoRoutes);
-
+app.use("/api/evidencias", evidenciasRoutes);
 app.get("/", (req, res) => {
   res.json({ mensaje: "API ENI lista 🚀 con MySQL" });
 });

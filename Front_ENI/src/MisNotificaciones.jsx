@@ -52,12 +52,36 @@ export default function MisNotificaciones() {
   const esAdmin = usuario.rol === "Administrador";
 
   const parseArchivos = (archivosRaw) => {
-    if (!archivosRaw) return [];
+    if (!archivosRaw) return { files: [], folderLink: null };
     try {
-      return JSON.parse(archivosRaw) || [];
+      const parsed = JSON.parse(archivosRaw);
+      if (Array.isArray(parsed)) {
+        return { files: parsed, folderLink: null };
+      }
+      return {
+        files: Array.isArray(parsed?.files) ? parsed.files : [],
+        folderLink: parsed?.folderLink || null,
+      };
     } catch {
-      return [];
+      return { files: [], folderLink: null };
     }
+  };
+
+  const getArchivoUrl = (ruta) => {
+    if (typeof ruta !== "string" || !ruta) return "#";
+    if (ruta.startsWith("http://") || ruta.startsWith("https://")) {
+      if (ruta.includes("drive.google.com")) {
+        const matchByFile = ruta.match(/\/file\/d\/([^/]+)/);
+        const matchByIdParam = ruta.match(/[?&]id=([^&]+)/);
+        const fileId = matchByFile?.[1] || matchByIdParam?.[1];
+
+        if (fileId) {
+          return `https://drive.google.com/file/d/${fileId}/view?usp=drive_link&v=${Date.now()}`;
+        }
+      }
+      return `${ruta}${ruta.includes("?") ? "&" : "?"}v=${Date.now()}`;
+    }
+    return `http://localhost:3000/${ruta}`;
   };
 
 
@@ -81,7 +105,11 @@ export default function MisNotificaciones() {
         ) : (
           <ul className="notificaciones-list">
             {notificaciones.map((n) => {
-              const archivos = parseArchivos(n.archivos); // array de rutas
+              const archivosData = parseArchivos(n.archivos);
+              const archivos = (archivosData.files || [])
+                .map((item) => (typeof item === "string" ? item : item?.url || ""))
+                .filter(Boolean);
+              const folderLink = archivosData.folderLink;
               return (
                 <li
                   key={n.id}
@@ -93,13 +121,28 @@ export default function MisNotificaciones() {
                     <strong className="notificacion-asunto">{n.asunto}</strong>
                     <p className="notificacion-mensaje">{n.mensaje}</p>
 
-                    {archivos.length > 0 && (
+                    {esAdmin && folderLink && (
+                      <ul className="notificacion-archivos-list">
+                        <li className="notificacion-archivo-item">
+                          <a
+                            className="notificacion-archivo-link"
+                            href={getArchivoUrl(folderLink)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Abrir evidencias del usuario
+                          </a>
+                        </li>
+                      </ul>
+                    )}
+
+                    {(!esAdmin || !folderLink) && archivos.length > 0 && (
                       <ul className="notificacion-archivos-list">
                         {archivos.map((ruta, idx) => (
                           <li key={idx} className="notificacion-archivo-item">
                             <a
                               className="notificacion-archivo-link"
-                              href={`http://localhost:3000/${ruta}`}
+                              href={getArchivoUrl(ruta)}
                               target="_blank"
                               rel="noreferrer"
                             >

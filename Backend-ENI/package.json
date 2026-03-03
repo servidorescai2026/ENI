@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "oauth:drive-token": "node scripts/get-google-refresh-token.mjs"
   },
   "author": "Alejandro",
   "license": "ISC",
@@ -15,11 +16,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "mysql2": "^3.15.2",
-    "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.10",
+    "open": "^9.1.0",
     "sequelize": "^6.37.7"
   },
   "devDependencies": {

@@ -1,8 +1,60 @@
 import express from "express";
 import { Archivo, Usuario } from "../database/models/index.js";
 import verifyToken from "../middleware/verifyToken.js";
+import multer from "multer";
+import path from "path";
+
 
 const router = express.Router();
+
+// Configuración de multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage });
+
+
+// 📤 Subir un archivo
+router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No se recibió ningún archivo",
+      });
+    }
+
+    const nuevoArchivo = await Archivo.create({
+      nombre: req.file.originalname,
+      tipo: req.file.mimetype,
+      tamaño: req.file.size,
+      ruta: req.file.path,
+      estado: "pendiente",
+      fechaCarga: new Date(),
+      usuarioId: req.user.id, // viene del token
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Archivo subido correctamente",
+      data: nuevoArchivo,
+    });
+  } catch (error) {
+    console.error("Error al subir archivo:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al subir el archivo",
+      error: error.message,
+    });
+  }
+});
+
 
 // 📊 Obtener estadísticas de archivos por estado
 router.get("/stats/resumen", verifyToken, async (req, res) => {

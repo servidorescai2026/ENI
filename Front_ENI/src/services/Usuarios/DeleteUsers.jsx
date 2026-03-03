@@ -1,5 +1,5 @@
 async function DeleteUsers(id) {
-    const response = await fetch(`http://127.0.0.1:8000/api/Usuarios/${id}`, {
+    const response = await fetch(`http://localhost:3000/api/usuarios/eliminar/${id}`, {
         method: 'DELETE',
         headers: {
             "Content-Type": "application/json",

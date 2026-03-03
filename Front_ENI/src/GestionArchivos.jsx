@@ -21,13 +21,15 @@ export default function GestionArchivos() {
     obtenerArchivos(datosUsuario.id, token);
   }, [navigate]);
 
-  const obtenerArchivos = async (usuarioId, token) => {
+  const obtenerArchivos = async (usuarioData, token) => {
     try {
       setCargando(true);
+
       const endpoint =
-        usuario?.rol === "Administrador"
+        usuarioData.rol === "Administrador"
           ? "http://localhost:3000/api/archivos"
-          : `http://localhost:3000/api/archivos/usuario/${usuarioId}`;
+          : `http://localhost:3000/api/archivos/usuario/${usuarioData.id}`;
+
 
       const response = await fetch(endpoint, {
         headers: {
@@ -238,158 +240,158 @@ export default function GestionArchivos() {
       )}
 
       <style jsx>{`
-        .gestion-archivos-container {
-          padding: 20px;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
+          .gestion-archivos-container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+          }
 
-        .admin-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 30px;
-          padding: 20px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 10px;
-          color: white;
-        }
+          .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+          }
 
-        .filtros-section {
-          margin-bottom: 30px;
-          padding: 20px;
-          background: #f5f5f5;
-          border-radius: 8px;
-        }
+          .filtros-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+          }
 
-        .filtros-botones {
-          display: flex;
-          gap: 10px;
-          margin-top: 10px;
-          flex-wrap: wrap;
-        }
+          .filtros-botones {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+          }
 
-        .btn {
-          padding: 8px 16px;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.3s ease;
-        }
+          .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+          }
 
-        .btn-primary {
-          background: #667eea;
-          color: white;
-        }
+          .btn-primary {
+            background: #667eea;
+            color: white;
+          }
 
-        .btn-success {
-          background: #48bb78;
-          color: white;
-        }
+          .btn-success {
+            background: #48bb78;
+            color: white;
+          }
 
-        .btn-warning {
-          background: #f6ad55;
-          color: white;
-        }
+          .btn-warning {
+            background: #f6ad55;
+            color: white;
+          }
 
-        .btn-danger {
-          background: #f56565;
-          color: white;
-          padding: 4px 8px;
-          font-size: 0.8rem;
-        }
+          .btn-danger {
+            background: #f56565;
+            color: white;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+          }
 
-        .btn-outline {
-          background: white;
-          color: #333;
-          border: 2px solid #ddd;
-        }
+          .btn-outline {
+            background: white;
+            color: #333;
+            border: 2px solid #ddd;
+          }
 
-        .btn-cerrar {
-          padding: 10px 20px;
-          background: rgba(255, 255, 255, 0.2);
-          color: white;
-          border: 2px solid white;
-          border-radius: 5px;
-          cursor: pointer;
-          font-weight: 600;
-        }
+          .btn-cerrar {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+          }
 
-        .archivos-table {
-          width: 100%;
-          border-collapse: collapse;
-          background: white;
-          border-radius: 8px;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+          .archivos-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          }
 
-        .archivos-table thead {
-          background: #333;
-          color: white;
-        }
+          .archivos-table thead {
+            background: #333;
+            color: white;
+          }
 
-        .archivos-table th {
-          padding: 15px;
-          text-align: left;
-          font-weight: 600;
-        }
+          .archivos-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+          }
 
-        .archivos-table td {
-          padding: 12px 15px;
-          border-bottom: 1px solid #eee;
-        }
+          .archivos-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+          }
 
-        .archivos-table tbody tr:hover {
-          background: #f9f9f9;
-        }
+          .archivos-table tbody tr:hover {
+            background: #f9f9f9;
+          }
 
-        .badge {
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: white;
-        }
+          .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+          }
 
-        .badge-warning {
-          background: #f6ad55;
-        }
+          .badge-warning {
+            background: #f6ad55;
+          }
 
-        .badge-success {
-          background: #48bb78;
-        }
+          .badge-success {
+            background: #48bb78;
+          }
 
-        .badge-danger {
-          background: #f56565;
-        }
+          .badge-danger {
+            background: #f56565;
+          }
 
-        .badge-secondary {
-          background: #718096;
-        }
+          .badge-secondary {
+            background: #718096;
+          }
 
-        .estado-select {
-          padding: 5px;
-          border-radius: 4px;
-          border: 1px solid #ddd;
-          cursor: pointer;
-        }
+          .estado-select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+          }
 
-        .acciones {
-          display: flex;
-          gap: 5px;
-          flex-wrap: wrap;
-        }
+          .acciones {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+          }
 
-        .loading,
-        .no-files {
-          text-align: center;
-          padding: 30px;
-          font-size: 1.1rem;
-          color: #666;
-        }
-      `}</style>
+          .loading,
+          .no-files {
+            text-align: center;
+            padding: 30px;
+            font-size: 1.1rem;
+            color: #666;
+          }
+        `}</style>
     </div>
   );
 }

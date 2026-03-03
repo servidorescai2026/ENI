@@ -97,15 +97,21 @@ export const getArchivoStats = async () => {
 };
 
 // 📤 Crear un nuevo archivo (con datos de prueba)
-export const createArchivo = async (archivoData) => {
+export const createArchivo = async (formData) => {
   try {
-    const response = await axiosInstance.post("/", archivoData);
+    const response = await axiosInstance.post("/subir", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
     return response.data;
   } catch (error) {
     console.error("Error al crear archivo:", error);
     throw error;
   }
 };
+
 
 export default {
   getAllArchivos,

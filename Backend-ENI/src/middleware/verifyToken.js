@@ -8,10 +8,9 @@ const verifyToken = (req, res, next) => {
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({
-      mensaje: "Token no proporcionado",
-      codigo: "NO_TOKEN"
-    });
+    return res
+      .status(401)
+      .json({ mensaje: "Acceso denegado. Token no proporcionado." });
   }
 
   try {
@@ -34,4 +33,3 @@ const verifyToken = (req, res, next) => {
 };
 
 export default verifyToken;
-

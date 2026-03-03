@@ -11,7 +11,7 @@ const Principal = () => {
     <div className="principal-page">
       {/* Navbar TOTALMENTE Centrado */}
       <Navbar className="principal-navbar fixed-top py-3">
-        <Container className="justify-content-center">
+        <Container fluid className="justify-content-center px-3 px-md-4">
           <div className="d-flex align-items-center gap-3">
             <img src={logoEni} alt="ENI Logo" className="logo-eni" />
             <div className="vr bg-light opacity-25 d-none d-sm-block" style={{height: '30px'}}></div>

@@ -6,12 +6,12 @@ import { Usuario } from "../database/models/usuarios.js";
 import { Area } from "../database/models/area.js";
 import verifyToken from "../middleware/verifyToken.js";
 import verifyCaptcha from "../middleware/verifyCaptcha.js";
-import nodemailer from "nodemailer";
 import { Notificacion } from "../database/models/notificacion.js";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { Op } from "sequelize";
+import { uploadEvidenciasToDrive } from "../services/googleDrive.js";
 
 dotenv.config();
 const router = express.Router();
@@ -37,16 +37,6 @@ const storage = multer.diskStorage({
   },
 });
 
-const storageEvidencias = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDirEvidencias);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + "-" + file.originalname);
-  },
-});
-
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
@@ -58,12 +48,15 @@ const upload = multer({
 });
 
 const uploadEvidencias = multer({
-  storage: storageEvidencias,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== "application/pdf") {
       return cb(new Error("Solo se permiten archivos PDF"));
     }
     cb(null, true);
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024,
   },
 });
 
@@ -161,27 +154,29 @@ router.post("/login", verifyCaptcha, async (req, res) => {
 });
 
 
+router.get("/perfil", verifyToken, async (req, res) => {
+  const usuario = await Usuario.findByPk(req.usuario.id, {
+    attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"],
+  });
+  res.json({ mensaje: "Acceso autorizado", usuario });
+});
+
 router.get("/", verifyToken, async (req, res) => {
   try {
     if (req.usuario.rol !== "Administrador") {
-      return res.status(403).json({ mensaje: "No tienes permiso para ver todos los usuarios" });
+      return res.status(403).json({ mensaje: "No tienes permiso para ver usuarios" });
     }
 
     const usuarios = await Usuario.findAll({
       attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"],
+      order: [["nombre", "ASC"], ["apellido", "ASC"]],
     });
 
-    res.json(usuarios);
+    return res.json(usuarios);
   } catch (error) {
-    res.status(500).json({ mensaje: "Error al obtener usuarios", error: error.message });
+    console.error("Error al listar usuarios:", error);
+    return res.status(500).json({ mensaje: "Error al obtener usuarios", error: error.message });
   }
-});
-
-router.get("/perfil", verifyToken, async (req, res) => {
-  const usuario = await Usuario.findByPk(req.usuario.id, {
-    attributes: ["id", "nombre", "apellido", "email", "rol", "categoria"],
-  });
-  res.json({ mensaje: "Acceso autorizado", usuario });
 });
 
 router.delete("/eliminar/:id", verifyToken, async (req, res) => {
@@ -350,11 +345,6 @@ router.post("/subir-evidencia", verifyToken, uploadEvidencias.array("archivos", 
       });
     }
 
-    const rutasWeb = archivosSubidos.map((f) => {
-      const rel = path.relative(process.cwd(), f.path);
-      return rel.replace(/\\/g, "/");
-    });
-
     const admins = await Usuario.findAll({
       where: { rol: "Administrador" },
       attributes: ["id"],
@@ -372,18 +362,61 @@ router.post("/subir-evidencia", verifyToken, uploadEvidencias.array("archivos", 
       descripcion.trim() ||
       `El usuario ${nombreUsuario} ha subido ${archivosSubidos.length} archivo(s) como evidencia.`;
 
+    let enlacesArchivos = [];
+    let evidenciasLink = null;
+    let storageMode = "google-drive";
+    const driveRequired = process.env.GOOGLE_DRIVE_REQUIRED === "true";
+
+    try {
+      const driveResult = await uploadEvidenciasToDrive(archivosSubidos, nombreUsuario);
+      evidenciasLink = driveResult.folderLink;
+      enlacesArchivos = (driveResult.files || []).map((item) => item.url).filter(Boolean);
+    } catch (driveError) {
+      if (driveRequired) {
+        return res.status(503).json({
+          mensaje:
+            "No fue posible subir a Google Drive y el modo estricto está activo. Contacta al administrador para credenciales OAuth/Drive válidas.",
+          error: driveError.message,
+        });
+      }
+
+      console.warn("Google Drive no disponible. Se usa almacenamiento local:", driveError.message);
+      storageMode = "local";
+
+      enlacesArchivos = await Promise.all(
+        archivosSubidos.map(async (file) => {
+          const safeName = file.originalname.replace(/\s+/g, "-");
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+          const fullPath = path.join(uploadDirEvidencias, unique);
+
+          await fs.promises.writeFile(fullPath, file.buffer);
+
+          const relativePath = path.relative(process.cwd(), fullPath);
+          return relativePath.replace(/\\/g, "/");
+        })
+      );
+    }
+
     await Notificacion.bulkCreate(
       admins.map((admin) => ({
         usuarioId: admin.id,
         areaId: null,
         asunto,
         mensaje,
-        archivos: JSON.stringify(rutasWeb),
+        archivos: JSON.stringify(
+          evidenciasLink
+            ? { folderLink: evidenciasLink, files: enlacesArchivos }
+            : enlacesArchivos
+        ),
       }))
     );
 
     return res.json({
-      mensaje: `Evidencia subida correctamente. Se ha notificado a ${admins.length} administrador(es).`,
+      mensaje:
+        storageMode === "google-drive"
+          ? `Evidencia subida correctamente a Google Drive. Se ha notificado a ${admins.length} administrador(es).`
+          : `Evidencia subida correctamente en almacenamiento local (Google Drive no disponible). Se ha notificado a ${admins.length} administrador(es).`,
+      storageMode,
     });
   } catch (err) {
     console.error("Error al subir evidencia:", err);

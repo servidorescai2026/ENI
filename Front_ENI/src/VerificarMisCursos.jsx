@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import GetMyCourses from "./services/Cursos/GetMyCourses";
-import "../src/css/global.css";
 
 /**
  * Componente para que Formadores verifiquen sus cursos asignados
@@ -54,8 +53,6 @@ export default function VerificarMisCursos() {
             onClick={() => navigate("/usuario")}
           >
             🏠 Panel de Usuario
-
-
           </button>
         </div>
 

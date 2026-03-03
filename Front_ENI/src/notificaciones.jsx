@@ -116,6 +116,26 @@ export default function EnviarNotificacionPorArea() {
             >
               Agregar
             </button>
+
+            <button
+              type="button"
+              className="btn-anim"
+              style={{ backgroundColor: "#10b981", marginLeft: "0.5rem" }}
+              onClick={() => {
+                // Seleccionar todas las áreas que aún no están agregadas
+                const areasFaltantes = areas.filter(
+                  (a) => !areasSeleccionadas.some((sel) => sel.id === a.id)
+                );
+                if (areasFaltantes.length > 0) {
+                  setAreasSeleccionadas((prev) => [...prev, ...areasFaltantes]);
+                  setEstado("✅ Se seleccionaron todas las áreas");
+                } else {
+                  setEstado("⚠️ Ya están todas las áreas seleccionadas");
+                }
+              }}
+            >
+              Notificar a todos
+            </button>
           </div>
         </div>
 

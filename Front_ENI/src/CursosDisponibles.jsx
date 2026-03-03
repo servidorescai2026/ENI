@@ -5,6 +5,7 @@ import GetCoursesByArea from "./services/Cursos/GetCoursesByArea";
 import GetAllAreas from "./services/Areas/GetAllAreas";
 import EnrollCourse from "./services/Inscripciones/EnrollCourse";
 import GetUserEnrollments from "./services/Inscripciones/GetUserEnrollments";
+import CancelEnrollment from "./services/Inscripciones/CancelEnrollment";
 
 export default function CursosDisponibles() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function CursosDisponibles() {
   const [loading, setLoading] = useState(true);
   const [areasMap, setAreasMap] = useState({});
   const [enrolling, setEnrolling] = useState(null);
+  const [canceling, setCanceling] = useState(null);
 
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
@@ -57,27 +59,25 @@ export default function CursosDisponibles() {
       if (isAdmin) {
         data = await GetAllCourses();
       } else if (u && u.areaId) {
-        // Intentar endpoint por área; si falla, traer todos y luego filtrar.
+        // Intentar endpoint por área; si falla, traer todos y luego filtrar localmente.
         try {
           data = await GetCoursesByArea(u.areaId);
         } catch (err) {
           console.warn('GetCoursesByArea falló, usando GetAllCourses como fallback:', err);
           data = await GetAllCourses();
-        }
-
-        // Asegurar filtrado client-side para evitar que cursos de otras áreas aparezcan
-        // (maneja diferencias de nombres de campo y tipos: areaId, area_id, area)
-        if (Array.isArray(data)) {
-          const areaStr = String(u.areaId);
-          data = data.filter((c) => {
-            return (
-              String(c.areaId || '') === areaStr ||
-              String(c.area_id || '') === areaStr ||
-              String(c.area || '') === areaStr
-            );
-          });
-        } else {
-          data = [];
+          // Solo en el fallback con GetAllCourses filtramos por área en el cliente.
+          if (Array.isArray(data)) {
+            const areaStr = String(u.areaId);
+            data = data.filter((c) => {
+              return (
+                String(c.areaId || '') === areaStr ||
+                String(c.area_id || '') === areaStr ||
+                String(c.area || '') === areaStr
+              );
+            });
+          } else {
+            data = [];
+          }
         }
       } else {
         // fallback: intentar obtener todos
@@ -109,22 +109,62 @@ export default function CursosDisponibles() {
   };
 
   const handleEnroll = async (courseId) => {
+    const tieneInscripcionActiva = inscripciones.some(
+      (inscripcion) => inscripcion.estado === "activo"
+    );
+
+    if (tieneInscripcionActiva) {
+      alert("Ya tienes un curso activo. Solo puedes inscribirte a uno a la vez.");
+      return;
+    }
+
     setEnrolling(courseId);
     try {
       await EnrollCourse(courseId);
       alert("¡Te has inscrito exitosamente al curso!");
-      loadUserEnrollments(); // Recargar inscripciones
+      await loadUserEnrollments(); // Recargar inscripciones
+      await loadCursos(usuario); // Recargar cursos para actualizar contador
     } catch (error) {
       console.error("Error inscribiéndose al curso:", error);
-      alert(`❌ ${error.message || "Error al inscribirse al curso. Inténtalo de nuevo."}`);
+      const mensaje = error.message || "Error al inscribirse al curso. Inténtalo de nuevo.";
+      alert(mensaje);
     } finally {
       setEnrolling(null);
     }
   };
 
   const isEnrolled = (courseId) => {
-    return inscripciones.some(inscripcion => inscripcion.curso_id === courseId);
+    return inscripciones.some(
+      (inscripcion) => inscripcion.curso_id === courseId && inscripcion.estado === "activo"
+    );
   };
+
+  const getEnrollmentByCourse = (courseId) => {
+    return inscripciones.find((inscripcion) => inscripcion.curso_id === courseId);
+  };
+
+  const getActiveEnrollmentByCourse = (courseId) => {
+    return inscripciones.find(
+      (inscripcion) => inscripcion.curso_id === courseId && inscripcion.estado === "activo"
+    );
+  };
+
+  const handleCancelEnrollment = async (enrollmentId) => {
+    setCanceling(enrollmentId);
+    try {
+      await CancelEnrollment(enrollmentId);
+      alert("Inscripción cancelada correctamente.");
+      await loadUserEnrollments();
+    } catch (error) {
+      console.error("Error cancelando inscripción:", error);
+      alert(error.message || "No se pudo cancelar la inscripción.");
+    } finally {
+      setCanceling(null);
+    }
+  };
+
+  const tieneInscripcionActivaFormador =
+    inscripciones.some((inscripcion) => inscripcion.estado === "activo");
 
   if (!usuario) return <p>Cargando...</p>;
 
@@ -158,9 +198,13 @@ export default function CursosDisponibles() {
           <div className="cursos-grid">
             {cursos.map((curso) => {
               const enrolled = isEnrolled(curso.id);
-              const esFormador = usuario?.rol === "Formador";
-              const formadorTieneInscripcion = esFormador && inscripciones.length > 0;
-              
+              const enrollment = getEnrollmentByCourse(curso.id);
+              const activeEnrollment = getActiveEnrollmentByCourse(curso.id);
+              const bloquearNuevaInscripcion = !enrolled && tieneInscripcionActivaFormador;
+              const puedeReinscribirse = enrollment && enrollment.estado !== "activo";
+              const inscripcionesCerradas = curso.inscripcionesAbiertas === false;
+              const cupoLleno = curso.maxPersonas && curso.inscritosActivos >= curso.maxPersonas;
+              const fechaPasada = curso.fechaCierreInscripcion && new Date(curso.fechaCierreInscripcion) < new Date();
               return (
                 <div key={curso.id} className="curso-card">
                   <div className="curso-header">
@@ -176,26 +220,64 @@ export default function CursosDisponibles() {
                       <span><strong>Categoría:</strong> {curso.categoria}</span>
                       <span><strong>Duración:</strong> {curso.duracion} horas</span>
                       <span><strong>Área:</strong> {getAreaName(curso)}</span>
+                      {curso.maxPersonas && (
+                        <span>
+                          <strong>👥 Cupos:</strong> {curso.inscritosActivos || 0} / {curso.maxPersonas}
+                          {cupoLleno && <span style={{color: 'red', marginLeft: '5px'}}>❗ Lleno</span>}
+                        </span>
+                      )}
+                      {curso.fechaCierreInscripcion && (
+                        <span>
+                          <strong>📆 Cierre:</strong> {new Date(curso.fechaCierreInscripcion).toLocaleDateString('es-ES')}
+                          {fechaPasada && <span style={{color: 'red', marginLeft: '5px'}}>❗ Cerrado</span>}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="curso-actions">
                     {enrolled ? (
                       <div className="enrolled-status">
-                        <span className="enrolled-text">✓ Inscrito</span>
+                        <span className="enrolled-text">
+                          {activeEnrollment ? "✓ Inscrito" : "Inscripción cancelada"}
+                        </span>
+                        {activeEnrollment && (
+                          <button
+                            className="btn-inscribirse"
+                            onClick={() => handleCancelEnrollment(activeEnrollment.id)}
+                            disabled={canceling === activeEnrollment.id}
+                          >
+                            {canceling === activeEnrollment.id ? "Cancelando..." : "Cancelar inscripción"}
+                          </button>
+                        )}
                       </div>
-                    ) : formadorTieneInscripcion ? (
-                      <div className="enrollment-disabled">
-                        <span className="disabled-text">🔒 Ya tienes un curso</span>
-                        <small>Los formadores pueden cursar un curso a la vez</small>
-                      </div>
+                    ) : puedeReinscribirse ? (
+                      <button
+                        className="btn-inscribirse"
+                        onClick={() => handleEnroll(curso.id)}
+                        disabled={Boolean(enrolling) || bloquearNuevaInscripcion || inscripcionesCerradas}
+                      >
+                        {Boolean(enrolling)
+                          ? "Inscribiendo..."
+                          : inscripcionesCerradas
+                            ? (cupoLleno ? "Cupo lleno" : "Inscripciones cerradas")
+                            : bloquearNuevaInscripcion
+                              ? "Ya tienes un curso activo"
+                              : "Volver a inscribirme"}
+                      </button>
                     ) : (
                       <button
                         className="btn-inscribirse"
                         onClick={() => handleEnroll(curso.id)}
-                        disabled={enrolling === curso.id}
+                        disabled={Boolean(enrolling) || bloquearNuevaInscripcion || inscripcionesCerradas}
                       >
-                        {enrolling === curso.id ? "Inscribiendo..." : "Inscribirme"}
+                        {Boolean(enrolling)
+                          ? "Inscribiendo..."
+                          : inscripcionesCerradas
+                            ? (cupoLleno ? "Cupo lleno" : "Inscripciones cerradas")
+                            : bloquearNuevaInscripcion
+                              ? "Ya tienes un curso activo"
+                              : "Inscribirme"}
                       </button>
                     )}
                   </div>
@@ -222,7 +304,31 @@ export default function CursosDisponibles() {
                       <small>Inscrito el: {new Date(inscripcion.fecha_inscripcion).toLocaleDateString()}</small>
                     </div>
                     <div className="inscripcion-status">
-                      <span className="status-active">Activo</span>
+                      <span className="status-active">
+                        {inscripcion.estado === "activo" ? "Activo" : "Cancelado"}
+                      </span>
+                      {inscripcion.estado === "activo" && (
+                        <button
+                          className="btn-inscribirse"
+                          onClick={() => handleCancelEnrollment(inscripcion.id)}
+                          disabled={canceling === inscripcion.id}
+                        >
+                          {canceling === inscripcion.id ? "Cancelando..." : "Cancelar inscripción"}
+                        </button>
+                      )}
+                      {inscripcion.estado !== "activo" && (
+                        <button
+                          className="btn-inscribirse"
+                          onClick={() => handleEnroll(inscripcion.curso_id)}
+                          disabled={Boolean(enrolling) || tieneInscripcionActivaFormador}
+                        >
+                          {Boolean(enrolling)
+                            ? "Inscribiendo..."
+                            : tieneInscripcionActivaFormador
+                              ? "Ya tienes un curso activo"
+                              : "Volver a inscribirme"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

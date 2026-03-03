@@ -2,6 +2,7 @@ import express from "express";
 import { Curso } from "../database/models/cursos.js";
 import { Area } from "../database/models/area.js";
 import { Usuario } from "../database/models/usuarios.js";
+import { Inscripcion } from "../database/models/inscripciones.js";
 import { sequelize } from "../database/config.js";
 import { QueryTypes } from "sequelize";
 import verifyToken from "../middleware/verifyToken.js";
@@ -17,7 +18,31 @@ router.get("/", async (req, res) => {
       attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'fechaInicio', 'fechaFin', 'tipoLanzamiento', 'maxPersonas', 'fechaCierreInscripcion', 'created_at', 'updated_at']
     });
 
-    res.json(cursos);
+    // Agregar conteo de inscritos activos a cada curso
+    const cursosConInscritos = await Promise.all(
+      cursos.map(async (curso) => {
+        const inscritosActivos = await Inscripcion.count({
+          where: {
+            curso_id: curso.id,
+            estado: "activo"
+          }
+        });
+
+        return {
+          ...curso.toJSON(),
+          inscritosActivos,
+          cuposDisponibles: curso.maxPersonas ? Math.max(0, curso.maxPersonas - inscritosActivos) : null,
+          inscripcionesAbiertas: (() => {
+            const ahora = new Date();
+            const fechaCerrada = curso.fechaCierreInscripcion && new Date(curso.fechaCierreInscripcion) < ahora;
+            const cupoLleno = curso.maxPersonas && inscritosActivos >= curso.maxPersonas;
+            return !fechaCerrada && !cupoLleno;
+          })()
+        };
+      })
+    );
+
+    res.json(cursosConInscritos);
   } catch (error) {
     console.error("Error al obtener cursos:", error);
     res.status(500).json({
@@ -38,47 +63,33 @@ router.get("/area/:areaId", async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
-    res.json(cursos);
+    // Agregar conteo de inscritos activos a cada curso
+    const cursosConInscritos = await Promise.all(
+      cursos.map(async (curso) => {
+        const inscritosActivos = await Inscripcion.count({
+          where: {
+            curso_id: curso.id,
+            estado: "activo"
+          }
+        });
+
+        return {
+          ...curso.toJSON(),
+          inscritosActivos,
+          cuposDisponibles: curso.maxPersonas ? Math.max(0, curso.maxPersonas - inscritosActivos) : null,
+          inscripcionesAbiertas: (() => {
+            const ahora = new Date();
+            const fechaCerrada = curso.fechaCierreInscripcion && new Date(curso.fechaCierreInscripcion) < ahora;
+            const cupoLleno = curso.maxPersonas && inscritosActivos >= curso.maxPersonas;
+            return !fechaCerrada && !cupoLleno;
+          })()
+        };
+      })
+    );
+
+    res.json(cursosConInscritos);
   } catch (error) {
     console.error("Error al obtener cursos por área:", error);
-    res.status(500).json({
-      error: "Error interno del servidor",
-      code: "INTERNAL_ERROR"
-    });
-  }
-});
-
-// GET /api/cursos/mis-cursos - Obtener mis cursos (solo del área del usuario autenticado)
-router.get("/mios", verifyToken, async (req, res) => {
-  try {
-    const usuarioId = req.usuario.id;
-
-    // Obtener el usuario para saber su areaId
-    const usuario = await Usuario.findByPk(usuarioId, {
-      attributes: ['id', 'areaId']
-    });
-
-    if (!usuario) {
-      return res.status(404).json({
-        error: "Usuario no encontrado",
-        code: "USER_NOT_FOUND"
-      });
-    }
-
-    if (!usuario.areaId) {
-      return res.json([]);
-    }
-
-    // Obtener solo los cursos del área del usuario
-    const cursos = await Curso.findAll({
-      where: { areaId: usuario.areaId },
-      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'fechaInicio', 'fechaFin', 'tipoLanzamiento', 'maxPersonas', 'fechaCierreInscripcion', 'created_at', 'updated_at'],
-      order: [['created_at', 'DESC']]
-    });
-
-    res.json(cursos);
-  } catch (error) {
-    console.error("Error al obtener mis cursos:", error);
     res.status(500).json({
       error: "Error interno del servidor",
       code: "INTERNAL_ERROR"
@@ -114,7 +125,29 @@ router.get("/:id/usuarios", async (req, res) => {
 router.post("/", verifyAdmin, async (req, res) => {
   try {
     const usuarioId = req.usuario?.id;
-    const { nombre, descripcion, duracion, categoria, nivel, areaId, fechaInicio, fechaFin, tipoLanzamiento, maxPersonas, fechaCierreInscripcion } = req.body;
+    const {
+      nombre,
+      descripcion,
+      duracion,
+      categoria,
+      nivel,
+      areaId,
+      areaIds,
+      fechaInicio,
+      fechaFin,
+      tipoLanzamiento,
+      maxPersonas,
+      fechaCierreInscripcion,
+    } = req.body;
+    const areaIdNormalizado = Number.isInteger(Number(areaId))
+      ? Number(areaId)
+      : Array.isArray(areaIds) && areaIds.length > 0
+        ? Number(areaIds[0])
+        : null;
+    const duracionNormalizada = Number(duracion);
+    const maxPersonasNormalizado = maxPersonas !== undefined && maxPersonas !== null && maxPersonas !== ""
+      ? Number(maxPersonas)
+      : null;
 
     if (!usuarioId) {
       return res.status(401).json({
@@ -124,14 +157,14 @@ router.post("/", verifyAdmin, async (req, res) => {
     }
 
     // Validaciones
-    if (!nombre || !descripcion || !duracion || !categoria || !nivel || !areaId) {
+    if (!nombre || !descripcion || !duracion || !categoria || !nivel || !areaIdNormalizado) {
       return res.status(400).json({
         error: "Todos los campos son requeridos",
         code: "MISSING_FIELDS"
       });
     }
 
-    if (typeof duracion !== 'number' || duracion < 1) {
+    if (!Number.isFinite(duracionNormalizada) || duracionNormalizada < 1) {
       return res.status(400).json({
         error: "La duración debe ser un número mayor a 0",
         code: "INVALID_DURATION"
@@ -161,17 +194,38 @@ router.post("/", verifyAdmin, async (req, res) => {
       });
     }
 
-    // Validar tipoLanzamiento
     const tiposLanzamientoValidos = ['fecha', 'cantidad', 'ambos'];
-    if (tipoLanzamiento && !tiposLanzamientoValidos.includes(tipoLanzamiento)) {
+    const tipoLanzamientoNormalizado = tipoLanzamiento || 'fecha';
+    if (!tiposLanzamientoValidos.includes(tipoLanzamientoNormalizado)) {
       return res.status(400).json({
         error: "Tipo de lanzamiento inválido",
         code: "INVALID_LAUNCH_TYPE"
       });
     }
 
+    if ((tipoLanzamientoNormalizado === 'fecha' || tipoLanzamientoNormalizado === 'ambos') && !fechaCierreInscripcion) {
+      return res.status(400).json({
+        error: "La fecha de cierre de inscripción es requerida para este tipo de lanzamiento",
+        code: "MISSING_CLOSE_DATE"
+      });
+    }
+
+    if ((tipoLanzamientoNormalizado === 'cantidad' || tipoLanzamientoNormalizado === 'ambos') && (!Number.isFinite(maxPersonasNormalizado) || maxPersonasNormalizado < 1)) {
+      return res.status(400).json({
+        error: "El máximo de personas debe ser mayor o igual a 1 para este tipo de lanzamiento",
+        code: "INVALID_MAX_PEOPLE"
+      });
+    }
+
+    if (fechaInicio && fechaFin && new Date(fechaFin) < new Date(fechaInicio)) {
+      return res.status(400).json({
+        error: "La fecha de finalización no puede ser menor a la fecha de inicio",
+        code: "INVALID_DATE_RANGE"
+      });
+    }
+
     // Validar que el areaId existe
-    const area = await Area.findByPk(areaId);
+    const area = await Area.findByPk(areaIdNormalizado);
     if (!area) {
       return res.status(400).json({
         error: "El área especificada no existe",
@@ -182,21 +236,21 @@ router.post("/", verifyAdmin, async (req, res) => {
     const nuevoCurso = await Curso.create({
       nombre,
       descripcion,
-      duracion,
+      duracion: duracionNormalizada,
       categoria,
       nivel,
-      areaId,
+      areaId: areaIdNormalizado,
       usuarioId,
       fechaInicio: fechaInicio || null,
       fechaFin: fechaFin || null,
-      tipoLanzamiento: tipoLanzamiento || 'fecha',
-      maxPersonas: maxPersonas || 0,
-      fechaCierreInscripcion: fechaCierreInscripcion || null
+      tipoLanzamiento: tipoLanzamientoNormalizado,
+      maxPersonas: (tipoLanzamientoNormalizado === 'cantidad' || tipoLanzamientoNormalizado === 'ambos') ? maxPersonasNormalizado : null,
+      fechaCierreInscripcion: (tipoLanzamientoNormalizado === 'fecha' || tipoLanzamientoNormalizado === 'ambos') ? fechaCierreInscripcion : null,
     });
 
     // 🔑 Obtener todos los usuarios del área y vincularlos
     const usuariosDelArea = await Usuario.findAll({
-      where: { areaId: areaId },
+      where: { areaId: areaIdNormalizado },
       attributes: ['id']
     });
 
@@ -240,7 +294,25 @@ router.post("/", verifyAdmin, async (req, res) => {
 router.put("/:id", verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, duracion, categoria, nivel, areaId, fechaInicio, fechaFin, tipoLanzamiento, maxPersonas, fechaCierreInscripcion } = req.body;
+    const {
+      nombre,
+      descripcion,
+      duracion,
+      categoria,
+      nivel,
+      areaId,
+      areaIds,
+      fechaInicio,
+      fechaFin,
+      tipoLanzamiento,
+      maxPersonas,
+      fechaCierreInscripcion,
+    } = req.body;
+    const areaIdBody = areaId !== undefined
+      ? Number(areaId)
+      : Array.isArray(areaIds) && areaIds.length > 0
+        ? Number(areaIds[0])
+        : undefined;
 
     const curso = await Curso.findByPk(id);
     if (!curso) {
@@ -277,13 +349,14 @@ router.put("/:id", verifyAdmin, async (req, res) => {
     }
 
     if (duracion !== undefined) {
-      if (typeof duracion !== 'number' || duracion < 1) {
+      const duracionNormalizada = Number(duracion);
+      if (!Number.isFinite(duracionNormalizada) || duracionNormalizada < 1) {
         return res.status(400).json({
           error: "Duración inválida",
           code: "INVALID_DURATION"
         });
       }
-      updateData.duracion = duracion;
+      updateData.duracion = duracionNormalizada;
     }
 
     if (categoria !== undefined) {
@@ -308,24 +381,33 @@ router.put("/:id", verifyAdmin, async (req, res) => {
       updateData.nivel = nivel;
     }
 
-    if (areaId !== undefined) {
-      const area = await Area.findByPk(areaId);
-      if (!area) {
+    if (fechaInicio !== undefined) {
+      if (fechaInicio && Number.isNaN(new Date(fechaInicio).getTime())) {
         return res.status(400).json({
-          error: "El área especificada no existe",
-          code: "INVALID_AREA"
+          error: "Fecha de inicio inválida",
+          code: "INVALID_START_DATE"
         });
       }
-      updateData.areaId = areaId;
-    }
-
-    // Nuevos campos de fechas y lanzamiento
-    if (fechaInicio !== undefined) {
       updateData.fechaInicio = fechaInicio || null;
     }
 
     if (fechaFin !== undefined) {
+      if (fechaFin && Number.isNaN(new Date(fechaFin).getTime())) {
+        return res.status(400).json({
+          error: "Fecha de finalización inválida",
+          code: "INVALID_END_DATE"
+        });
+      }
       updateData.fechaFin = fechaFin || null;
+    }
+
+    const fechaInicioValidar = updateData.fechaInicio !== undefined ? updateData.fechaInicio : curso.fechaInicio;
+    const fechaFinValidar = updateData.fechaFin !== undefined ? updateData.fechaFin : curso.fechaFin;
+    if (fechaInicioValidar && fechaFinValidar && new Date(fechaFinValidar) < new Date(fechaInicioValidar)) {
+      return res.status(400).json({
+        error: "La fecha de finalización no puede ser menor a la fecha de inicio",
+        code: "INVALID_DATE_RANGE"
+      });
     }
 
     if (tipoLanzamiento !== undefined) {
@@ -339,12 +421,67 @@ router.put("/:id", verifyAdmin, async (req, res) => {
       updateData.tipoLanzamiento = tipoLanzamiento;
     }
 
-    if (maxPersonas !== undefined) {
-      updateData.maxPersonas = maxPersonas || 0;
-    }
+    const tipoLanzamientoActual = updateData.tipoLanzamiento || curso.tipoLanzamiento || 'fecha';
 
     if (fechaCierreInscripcion !== undefined) {
+      if (fechaCierreInscripcion && Number.isNaN(new Date(fechaCierreInscripcion).getTime())) {
+        return res.status(400).json({
+          error: "Fecha de cierre de inscripción inválida",
+          code: "INVALID_CLOSE_DATE"
+        });
+      }
       updateData.fechaCierreInscripcion = fechaCierreInscripcion || null;
+    }
+
+    if (maxPersonas !== undefined) {
+      const maxPersonasNormalizado = maxPersonas !== null && maxPersonas !== "" ? Number(maxPersonas) : null;
+      if (maxPersonasNormalizado !== null && (!Number.isFinite(maxPersonasNormalizado) || maxPersonasNormalizado < 1)) {
+        return res.status(400).json({
+          error: "Máximo de personas inválido",
+          code: "INVALID_MAX_PEOPLE"
+        });
+      }
+      updateData.maxPersonas = maxPersonasNormalizado;
+    }
+
+    const fechaCierreActual = updateData.fechaCierreInscripcion !== undefined
+      ? updateData.fechaCierreInscripcion
+      : curso.fechaCierreInscripcion;
+    const maxPersonasActual = updateData.maxPersonas !== undefined
+      ? updateData.maxPersonas
+      : curso.maxPersonas;
+
+    if ((tipoLanzamientoActual === 'fecha' || tipoLanzamientoActual === 'ambos') && !fechaCierreActual) {
+      return res.status(400).json({
+        error: "La fecha de cierre de inscripción es requerida para este tipo de lanzamiento",
+        code: "MISSING_CLOSE_DATE"
+      });
+    }
+
+    if ((tipoLanzamientoActual === 'cantidad' || tipoLanzamientoActual === 'ambos') && (!Number.isFinite(maxPersonasActual) || maxPersonasActual < 1)) {
+      return res.status(400).json({
+        error: "El máximo de personas debe ser mayor o igual a 1 para este tipo de lanzamiento",
+        code: "INVALID_MAX_PEOPLE"
+      });
+    }
+
+    if (tipoLanzamientoActual === 'fecha') {
+      updateData.maxPersonas = null;
+    }
+
+    if (tipoLanzamientoActual === 'cantidad') {
+      updateData.fechaCierreInscripcion = null;
+    }
+
+    if (areaIdBody !== undefined) {
+      const area = await Area.findByPk(areaIdBody);
+      if (!area) {
+        return res.status(400).json({
+          error: "El área especificada no existe",
+          code: "INVALID_AREA"
+        });
+      }
+      updateData.areaId = areaIdBody;
     }
 
     // Actualizar timestamps
@@ -352,7 +489,7 @@ router.put("/:id", verifyAdmin, async (req, res) => {
 
     await curso.update(updateData);
     // 🔑 Si cambió el areaId, actualizar usuarios vinculados
-    if (areaId !== undefined && areaId !== areaIdAnterior) {
+    if (areaIdBody !== undefined && areaIdBody !== areaIdAnterior) {
       // Eliminar vinculaciones antiguas
       await sequelize.query(
         'DELETE FROM cursos_usuarios WHERE cursoId = ?',
@@ -361,7 +498,7 @@ router.put("/:id", verifyAdmin, async (req, res) => {
 
       // Obtener nuevos usuarios del área
       const nuevosusuarios = await Usuario.findAll({
-        where: { areaId: areaId },
+        where: { areaId: areaIdBody },
         attributes: ['id']
       });
 

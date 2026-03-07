@@ -17,6 +17,7 @@ import SubirEvidencias from "./SubirEvidencias";
 import Reportes from "./Reportes";
 import Configuracion from "./Configuracion";
 import Monitoria from "./Monitoria";
+import BulkUpload from "./BulkUpload";
 import "./css/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -77,6 +78,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           element={
             <RutaProtegida rolRequerido="Administrador">
               <GestionUsuarios />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/upload-usuarios"
+          element={
+            <RutaProtegida rolRequerido="Administrador">
+              <BulkUpload />
             </RutaProtegida>
           }
         />

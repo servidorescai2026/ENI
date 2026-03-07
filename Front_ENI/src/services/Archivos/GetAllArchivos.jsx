@@ -1,37 +1,23 @@
-import axios from "axios";
+import authFetch from "../../utils/authFetch";
+import { apiUrl } from "../../config/api";
 
-const API_URL = "http://localhost:3000/api/archivos";
+const API_URL = apiUrl("/api/archivos");
 
-// Obtener token del localStorage
-const getToken = () => localStorage.getItem("token");
+const request = async (path = "", options = {}) => {
+  const response = await authFetch(`${API_URL}${path}`, options);
 
-// Crear instancia de axios con autenticación
-const axiosInstance = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// Interceptor para agregar token en cada solicitud
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `HTTP ${response.status}`);
   }
-);
+
+  return response.json();
+};
 
 // 📋 Obtener todos los archivos
 export const getAllArchivos = async () => {
   try {
-    const response = await axiosInstance.get("/");
-    return response.data;
+    return await request();
   } catch (error) {
     console.error("Error al obtener archivos:", error);
     throw error;
@@ -41,8 +27,7 @@ export const getAllArchivos = async () => {
 // 📋 Obtener archivos de un usuario específico
 export const getArchivosByUsuario = async (usuarioId) => {
   try {
-    const response = await axiosInstance.get(`/usuario/${usuarioId}`);
-    return response.data;
+    return await request(`/usuario/${usuarioId}`);
   } catch (error) {
     console.error("Error al obtener archivos del usuario:", error);
     throw error;
@@ -52,8 +37,7 @@ export const getArchivosByUsuario = async (usuarioId) => {
 // 📄 Obtener un archivo por ID
 export const getArchivoById = async (archivoId) => {
   try {
-    const response = await axiosInstance.get(`/${archivoId}`);
-    return response.data;
+    return await request(`/${archivoId}`);
   } catch (error) {
     console.error("Error al obtener archivo:", error);
     throw error;
@@ -63,11 +47,16 @@ export const getArchivoById = async (archivoId) => {
 // ✏️ Actualizar estado de un archivo
 export const updateArchivoEstado = async (archivoId, nuevoEstado, descripcion = "") => {
   try {
-    const response = await axiosInstance.put(`/${archivoId}`, {
-      estado: nuevoEstado,
-      descripcion,
+    return await request(`/${archivoId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        estado: nuevoEstado,
+        descripcion,
+      }),
     });
-    return response.data;
   } catch (error) {
     console.error("Error al actualizar archivo:", error);
     throw error;
@@ -77,8 +66,9 @@ export const updateArchivoEstado = async (archivoId, nuevoEstado, descripcion = 
 // 🗑️ Eliminar un archivo
 export const deleteArchivo = async (archivoId) => {
   try {
-    const response = await axiosInstance.delete(`/${archivoId}`);
-    return response.data;
+    return await request(`/${archivoId}`, {
+      method: "DELETE",
+    });
   } catch (error) {
     console.error("Error al eliminar archivo:", error);
     throw error;
@@ -88,8 +78,7 @@ export const deleteArchivo = async (archivoId) => {
 // 📊 Obtener estadísticas de archivos
 export const getArchivoStats = async () => {
   try {
-    const response = await axiosInstance.get("/stats/resumen");
-    return response.data;
+    return await request("/stats/resumen");
   } catch (error) {
     console.error("Error al obtener estadísticas:", error);
     throw error;
@@ -99,13 +88,13 @@ export const getArchivoStats = async () => {
 // 📤 Crear un nuevo archivo (con datos de prueba)
 export const createArchivo = async (formData) => {
   try {
-    const response = await axiosInstance.post("/subir", formData, {
+    return await request("", {
+      method: "POST",
       headers: {
-        "Content-Type": "multipart/form-data",
+        Accept: "application/json",
       },
+      body: formData,
     });
-
-    return response.data;
   } catch (error) {
     console.error("Error al crear archivo:", error);
     throw error;

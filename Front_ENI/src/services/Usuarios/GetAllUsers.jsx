@@ -1,12 +1,20 @@
+import authFetch from "../../utils/authFetch";
+import { apiUrl } from "../../config/api";
+
 async function GetAllUsers() {
-    const response = await fetch('http://127.0.0.1:8000/api/Usuarios', {
+    const response = await authFetch(apiUrl('/api/usuarios'), {
         method: 'GET',
         headers: {
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
-    })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
     const data = await response.json();
-    return data;
+    return Array.isArray(data) ? data : (data.usuarios || []);
 }
 export default GetAllUsers;

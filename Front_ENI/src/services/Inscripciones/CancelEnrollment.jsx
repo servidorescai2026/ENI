@@ -1,4 +1,5 @@
 import authFetch from "../../utils/authFetch";
+import { apiUrl } from "../../config/api";
 
 async function CancelEnrollment(enrollmentId) {
     const token = localStorage.getItem("token");
@@ -7,7 +8,7 @@ async function CancelEnrollment(enrollmentId) {
         throw new Error("No hay token de autenticación");
     }
 
-    const response = await authFetch(`http://localhost:3000/api/inscripciones/${enrollmentId}/cancelar`, {
+    const response = await authFetch(apiUrl(`/api/inscripciones/${enrollmentId}/cancelar`), {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",

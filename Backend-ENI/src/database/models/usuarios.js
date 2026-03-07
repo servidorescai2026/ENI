@@ -9,16 +9,20 @@ export const Usuario = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    documento: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     nombre: {
       type: DataTypes.STRING(100),
       allowNull: false,
     },
     apellido: {
       type: DataTypes.STRING(100),
-      allowNull: false,
+      allowNull: true,
     },
     email: {
-      type: DataTypes.STRING(100),
+      type: DataTypes.STRING(150),
       unique: true,
       allowNull: false,
     },
@@ -27,17 +31,37 @@ export const Usuario = sequelize.define(
       allowNull: false,
     },
     rol: {
-      type: DataTypes.ENUM('Administrador', 'Estudiante', 'Formador'),
-      defaultValue: "Estudiante",
-      allowNull: false,
+      type: DataTypes.ENUM('Administrador', 'Formador', 'Instructor'),
+      defaultValue: "Formador",
+      allowNull: true,
     },
     areaId: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: false,
       references: {
         model: 'areas',
         key: 'id'
       }
+    },
+    regionalId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    regionalNombre: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    centroFormacionId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    centroNombre: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+    },
+    redConocimiento: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
     },
   },
   {

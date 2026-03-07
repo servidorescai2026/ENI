@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "./config/api";
 
 export default function GestionArchivos() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function GestionArchivos() {
     }
 
     setUsuario(datosUsuario);
-    obtenerArchivos(datosUsuario.id, token);
+    obtenerArchivos(datosUsuario, token);
   }, [navigate]);
 
   const obtenerArchivos = async (usuarioData, token) => {
@@ -27,8 +28,8 @@ export default function GestionArchivos() {
 
       const endpoint =
         usuarioData.rol === "Administrador"
-          ? "http://localhost:3000/api/archivos"
-          : `http://localhost:3000/api/archivos/usuario/${usuarioData.id}`;
+          ? apiUrl("/api/archivos")
+          : apiUrl(`/api/archivos/usuario/${usuarioData.id}`);
 
 
       const response = await fetch(endpoint, {
@@ -56,7 +57,7 @@ export default function GestionArchivos() {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        `http://localhost:3000/api/archivos/${archivoId}`,
+        apiUrl(`/api/archivos/${archivoId}`),
         {
           method: "PUT",
           headers: {
@@ -97,7 +98,7 @@ export default function GestionArchivos() {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        `http://localhost:3000/api/archivos/${archivoId}`,
+        apiUrl(`/api/archivos/${archivoId}`),
         {
           method: "DELETE",
           headers: {

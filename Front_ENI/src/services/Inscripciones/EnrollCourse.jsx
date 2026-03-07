@@ -1,4 +1,5 @@
 import authFetch from "../../utils/authFetch";
+import { apiUrl } from "../../config/api";
 
 async function EnrollCourse(courseId) {
     const token = localStorage.getItem("token");
@@ -12,7 +13,7 @@ async function EnrollCourse(courseId) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await authFetch('http://localhost:3000/api/inscripciones', {
+        const response = await authFetch(apiUrl('/api/inscripciones'), {
             method: 'POST',
             headers: {
                 "Content-Type": "application/json",

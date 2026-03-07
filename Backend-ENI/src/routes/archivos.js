@@ -2,10 +2,25 @@ import express from "express";
 import { Archivo, Usuario } from "../database/models/index.js";
 import verifyToken from "../middleware/verifyToken.js";
 import multer from "multer";
-import path from "path";
 
 
 const router = express.Router();
+
+const requireAdmin = (req, res) => {
+  if (req.usuario?.rol !== "Administrador") {
+    res.status(403).json({
+      success: false,
+      message: "No tienes permisos para realizar esta acción",
+    });
+    return false;
+  }
+
+  return true;
+};
+
+const canAccessUserFiles = (req, usuarioId) => {
+  return req.usuario?.rol === "Administrador" || Number(req.usuario?.id) === Number(usuarioId);
+};
 
 // Configuración de multer
 const storage = multer.diskStorage({
@@ -37,7 +52,7 @@ router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
       ruta: req.file.path,
       estado: "pendiente",
       fechaCarga: new Date(),
-      usuarioId: req.user.id, // viene del token
+      usuarioId: req.usuario.id,
     });
 
     res.status(201).json({
@@ -59,6 +74,8 @@ router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
 // 📊 Obtener estadísticas de archivos por estado
 router.get("/stats/resumen", verifyToken, async (req, res) => {
   try {
+    if (!requireAdmin(req, res)) return;
+
     const stats = await Archivo.sequelize.query(
       `SELECT estado, COUNT(*) as cantidad FROM archivos GROUP BY estado`,
       { type: "SELECT" }
@@ -83,6 +100,14 @@ router.get("/stats/resumen", verifyToken, async (req, res) => {
 router.get("/usuario/:usuarioId", verifyToken, async (req, res) => {
   try {
     const { usuarioId } = req.params;
+
+    if (!canAccessUserFiles(req, usuarioId)) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para ver estos archivos",
+      });
+    }
+
     const archivos = await Archivo.findAll({
       where: { usuarioId },
       include: {
@@ -111,6 +136,8 @@ router.get("/usuario/:usuarioId", verifyToken, async (req, res) => {
 // 📄 Obtener todos los archivos (admin)
 router.get("/", verifyToken, async (req, res) => {
   try {
+    if (!requireAdmin(req, res)) return;
+
     const archivos = await Archivo.findAll({
       include: {
         model: Usuario,
@@ -154,6 +181,13 @@ router.get("/:id", verifyToken, async (req, res) => {
       });
     }
 
+    if (!canAccessUserFiles(req, archivo.usuarioId)) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para ver este archivo",
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: "Archivo obtenido correctamente",
@@ -172,6 +206,8 @@ router.get("/:id", verifyToken, async (req, res) => {
 // ✏️ Actualizar estado de un archivo
 router.put("/:id", verifyToken, async (req, res) => {
   try {
+    if (!requireAdmin(req, res)) return;
+
     const { id } = req.params;
     const { estado, descripcion } = req.body;
 
@@ -214,6 +250,8 @@ router.put("/:id", verifyToken, async (req, res) => {
 // 🗑️ Eliminar un archivo
 router.delete("/:id", verifyToken, async (req, res) => {
   try {
+    if (!requireAdmin(req, res)) return;
+
     const { id } = req.params;
     const archivo = await Archivo.findByPk(id);
 

@@ -1,20 +1,27 @@
+import authFetch from "../../utils/authFetch";
+import { apiUrl } from "../../config/api";
+
 async function GetMyCourses() {
     const token = localStorage.getItem("token");
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "null");
 
     if (!token) {
         throw new Error("No hay token de autenticación");
+    }
+
+    if (!usuario?.areaId) {
+        return [];
     }
 
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await fetch('http://localhost:3000/api/cursos/mios', {
+        const response = await authFetch(apiUrl(`/api/cursos/area/${usuario.areaId}`), {
             method: 'GET',
             headers: {
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "Authorization": `Bearer ${token}`,
             },
             signal: controller.signal
         });
@@ -26,7 +33,7 @@ async function GetMyCourses() {
         }
 
         const data = await response.json();
-        return data;
+        return Array.isArray(data) ? data : [];
     } catch (error) {
         if (error.name === 'AbortError') {
             throw new Error("La petición tardó demasiado tiempo. Verifica que el servidor esté corriendo.");

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "./config/api";
 
 export default function Monitoria() {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ export default function Monitoria() {
 
     try {
       // Cargar todos los usuarios (formadores)
-      const resUsuarios = await fetch("http://localhost:3000/api/usuarios", {
+      const resUsuarios = await fetch(apiUrl("/api/usuarios"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dataUsuarios = await resUsuarios.json();
@@ -45,7 +46,7 @@ export default function Monitoria() {
       }
 
       // Cargar todos los cursos
-      const resCursos = await fetch("http://localhost:3000/api/cursos", {
+      const resCursos = await fetch(apiUrl("/api/cursos"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dataCursos = await resCursos.json();
@@ -54,7 +55,7 @@ export default function Monitoria() {
       }
 
       // Cargar todas las evidencias/archivos
-      const resEvidencias = await fetch("http://localhost:3000/api/archivos", {
+      const resEvidencias = await fetch(apiUrl("/api/archivos"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dataEvidencias = await resEvidencias.json();

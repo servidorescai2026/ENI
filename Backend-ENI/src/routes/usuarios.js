@@ -4,13 +4,16 @@ import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import { Usuario } from "../database/models/usuarios.js";
 import { Area } from "../database/models/area.js";
+import { InscripcionCapacitacion } from "../database/models/inscripciones_capacitacion.js";
 import verifyToken from "../middleware/verifyToken.js";
 import verifyCaptcha from "../middleware/verifyCaptcha.js";
 import { Notificacion } from "../database/models/notificacion.js";
 import multer from "multer";
+import xlsx from "xlsx";
 import fs from "fs";
 import path from "path";
 import { Op } from "sequelize";
+import { sequelize } from "../database/config.js";
 import { uploadEvidenciasToDrive } from "../services/googleDrive.js";
 
 dotenv.config();
@@ -57,6 +60,22 @@ const uploadEvidencias = multer({
   },
   limits: {
     fileSize: 10 * 1024 * 1024,
+  },
+});
+
+// Multer configuration para archivos Excel/CSV (importación en lote)
+const uploadExcel = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "text/csv",
+    ];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error("Solo se permiten archivos Excel o CSV"));
+    }
+    cb(null, true);
   },
 });
 
@@ -153,6 +172,397 @@ router.post("/login", verifyCaptcha, async (req, res) => {
   }
 });
 
+// Ruta para importación masiva de usuarios mediante archivo Excel/CSV
+router.post(
+  "/upload-bulk",
+  verifyToken,
+  uploadExcel.single("file"),
+  async (req, res) => {
+    try {
+      const normalizeText = (value) =>
+        String(value ?? "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim()
+          .toLowerCase();
+
+      const getNormalizedRow = (row) =>
+        Object.entries(row).reduce((acc, [key, value]) => {
+          acc[normalizeText(String(key).replace(/\s+/g, " "))] = value;
+          return acc;
+        }, {});
+
+      const getField = (row, keys) => {
+        const normalizedRow = getNormalizedRow(row);
+
+        for (const key of keys) {
+          if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "") {
+            return row[key];
+          }
+
+          const normalizedKey = normalizeText(String(key).replace(/\s+/g, " "));
+          const normalizedValue = normalizedRow[normalizedKey];
+          if (normalizedValue !== undefined && normalizedValue !== null && String(normalizedValue).trim() !== "") {
+            return normalizedValue;
+          }
+        }
+        return null;
+      };
+
+      const parseDateValue = (value) => {
+        if (!value) return null;
+        if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+        if (typeof value === "number") {
+          const parsed = xlsx.SSF.parse_date_code(value);
+          if (!parsed) return null;
+          return new Date(parsed.y, parsed.m - 1, parsed.d);
+        }
+
+        const text = String(value).trim();
+        if (!text) return null;
+
+        const directDate = new Date(text);
+        if (!Number.isNaN(directDate.getTime())) return directDate;
+
+        const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+        if (!match) return null;
+
+        const day = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const rawYear = Number(match[3]);
+        const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+        const parsed = new Date(year, month, day);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      };
+
+      const splitFullName = (fullName) => {
+        const cleanName = String(fullName || "").trim().replace(/\s+/g, " ");
+        if (!cleanName) return { nombre: null, apellido: "" };
+
+        const parts = cleanName.split(" ");
+        if (parts.length === 1) {
+          return { nombre: parts[0], apellido: "" };
+        }
+
+        return {
+          nombre: parts.slice(0, 2).join(" "),
+          apellido: parts.slice(2).join(" ") || parts[parts.length - 1],
+        };
+      };
+
+      const parsePlanMultiplicacion = (value) => {
+        const text = String(value || "").trim();
+        if (!text) {
+          return { opcion: null, acta: null };
+        }
+
+        const normalized = normalizeText(text);
+        const acta = normalized.includes("sin acta") || normalized === "no"
+            ? "NO"
+          : normalized.includes("acta")
+            ? "SI"
+            : null;
+
+        return {
+          opcion: text,
+          acta,
+        };
+      };
+
+      const buscarArea = async (areaHints, transaction) => {
+        const cleanHints = areaHints
+          .map((value) => String(value || "").trim())
+          .filter(Boolean);
+
+        if (!cleanHints.length) return null;
+
+        const areas = await Area.findAll({ transaction });
+        const indexed = areas.map((area) => ({
+          area,
+          codigo: normalizeText(area.codigo),
+          nombre: normalizeText(area.nombre),
+        }));
+
+        for (const hint of cleanHints) {
+          const normalizedHint = normalizeText(hint);
+          const compactHint = normalizedHint
+            .replace(/^red de /, "")
+            .replace(/^red /, "")
+            .replace(/^area de /, "")
+            .replace(/^area /, "");
+
+          const exactMatch = indexed.find(
+            ({ codigo, nombre }) =>
+              codigo === normalizedHint ||
+              nombre === normalizedHint ||
+              nombre === `red de ${compactHint}` ||
+              nombre.endsWith(compactHint)
+          );
+          if (exactMatch) return exactMatch.area;
+
+          const prefixedHint = normalizedHint.startsWith("red de") ? normalizedHint : `red de ${normalizedHint}`;
+          const fuzzyMatch = indexed.find(
+            ({ nombre }) =>
+              nombre.includes(normalizedHint) ||
+              nombre.includes(compactHint) ||
+              nombre.includes(prefixedHint) ||
+              prefixedHint.includes(nombre) ||
+              compactHint.includes(nombre.replace(/^red de /, ""))
+          );
+          if (fuzzyMatch) return fuzzyMatch.area;
+        }
+
+        return null;
+      };
+
+      // sólo administradores pueden ejecutar esta operación
+      if (req.usuario.rol !== "Administrador") {
+        return res.status(403).json({ mensaje: "No tienes permiso para importar usuarios" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ mensaje: "Debes adjuntar un archivo" });
+      }
+
+      // leer workbook desde buffer
+      const workbook = xlsx.read(req.file.buffer, { type: "buffer", cellDates: true });
+      const sheetName = workbook.SheetNames[0];
+      const matrix = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+        defval: "",
+        blankrows: false,
+      });
+
+      const expectedHeaders = [
+        "documento",
+        "correo",
+        "email",
+        "nombre instructor",
+        "red de conocimiento",
+        "area tematica",
+        "denominacion de la capacitacion",
+      ];
+
+      const headerRowIndex = matrix.findIndex((row) => {
+        const normalizedCells = row.map((cell) => normalizeText(cell));
+        const matches = expectedHeaders.filter((header) => normalizedCells.includes(header)).length;
+        return matches >= 3;
+      });
+
+      if (headerRowIndex === -1) {
+        return res.status(400).json({
+          mensaje: "No se encontró una fila de encabezados válida en el Excel",
+          detalles: {
+            encabezadosDetectados: matrix.slice(0, 5),
+          },
+        });
+      }
+
+      const rawHeaders = matrix[headerRowIndex].map((cell, index) => {
+        const value = String(cell || "").trim();
+        return value || `columna_${index + 1}`;
+      });
+
+      const rows = matrix
+        .slice(headerRowIndex + 1)
+        .filter((row) => row.some((cell) => String(cell || "").trim() !== ""))
+        .map((row) => {
+          const mappedRow = {};
+          rawHeaders.forEach((header, index) => {
+            mappedRow[header] = row[index] ?? "";
+          });
+          return mappedRow;
+        });
+
+      if (!rows || rows.length === 0) {
+        return res.status(400).json({ mensaje: "El archivo está vacío" });
+      }
+
+      const resultado = await sequelize.transaction(async (transaction) => {
+        const filasProcesadas = new Set();
+        const detalles = {
+          usuariosCreados: 0,
+          usuariosReutilizados: 0,
+          inscripcionesCreadas: 0,
+          filasOmitidas: 0,
+          errores: [],
+          encabezadosDetectados: rawHeaders,
+          filaEncabezados: headerRowIndex + 1,
+        };
+
+        const passwordHash = await bcrypt.hash("ENI2024*", 10);
+
+        for (let index = 0; index < rows.length; index += 1) {
+          const row = rows[index];
+          const numeroFila = index + 2;
+
+          const documento = String(getField(row, ["documento", "DOCUMENTO", "id", "ID"]) || "").trim();
+          const nombreDirecto = getField(row, ["nombre", "Nombre"]);
+          const apellidoDirecto = getField(row, ["apellido", "Apellido"]);
+          const nombreCompleto = getField(row, ["NOMBRE INSTRUCTOR", "Nombre Instructor", "nombre_instructor"]);
+
+          let nombre = nombreDirecto ? String(nombreDirecto).trim() : null;
+          let apellido = apellidoDirecto ? String(apellidoDirecto).trim() : "";
+
+          if ((!nombre || !apellido) && nombreCompleto) {
+            const splitName = splitFullName(nombreCompleto);
+            nombre = nombre || splitName.nombre;
+            apellido = apellido || splitName.apellido;
+          }
+
+          let email = String(
+            getField(row, ["email", "Email", "CORREO", "correo", "Mail", "MAIL"]) || ""
+          ).trim().toLowerCase();
+
+          if (!email && documento) {
+            email = `usuario${documento}@example.com`;
+          }
+
+          const redConocimiento = String(
+            getField(row, ["RED DE CONOCIMIENTO", "redConocimiento", "red_conocimiento"]) || ""
+          ).trim();
+          const areaTematica = String(
+            getField(row, ["ÁREA TEMÁTICA", "AREA TEMATICA", "area_tematica", "areaTematica"]) || ""
+          ).trim();
+          const codigoArea = String(
+            getField(row, ["codigoArea", "codigo", "codigo_area", "CODIGO_AREA"]) || ""
+          ).trim();
+
+          const area = await buscarArea([codigoArea, redConocimiento, areaTematica], transaction);
+
+          if (!nombre || !email || !area) {
+            const normalizedRow = getNormalizedRow(row);
+            detalles.filasOmitidas += 1;
+            detalles.errores.push(
+              `Fila ${numeroFila}: faltan datos base o no se encontró el área/red (${redConocimiento || areaTematica || codigoArea || "sin referencia"}). Encabezados: ${Object.keys(normalizedRow).join(", ")}`
+            );
+            continue;
+          }
+
+          const filaKey = [
+            email,
+            documento,
+            String(getField(row, ["DENOMINACIÓN DE LA CAPACITACIÓN", "DENOMINACION DE LA CAPACITACION", "denominacion_capacitacion"]) || "").trim(),
+            String(getField(row, ["FECHA INICIO CAPACITACIÓN", "FECHA INICIO CAPACITACION", "fecha_inicio_cap"]) || "").trim(),
+          ].join("|");
+
+          if (filasProcesadas.has(filaKey)) {
+            detalles.filasOmitidas += 1;
+            detalles.errores.push(`Fila ${numeroFila}: registro duplicado dentro del archivo (${email})`);
+            continue;
+          }
+
+          filasProcesadas.add(filaKey);
+
+          let usuario = await Usuario.findOne({
+            where: documento ? { [Op.or]: [{ email }, { documento }] } : { email },
+            transaction,
+          });
+
+          if (!usuario) {
+            usuario = await Usuario.create(
+              {
+                documento: documento || null,
+                nombre,
+                apellido: apellido || "",
+                email,
+                password: passwordHash,
+                rol: String(getField(row, ["rol", "Rol"]) || "Formador").trim() || "Formador",
+                areaId: area.id,
+                regionalId: getField(row, ["regionalId", "COD_REGIONAL"]) || null,
+                regionalNombre: getField(row, ["regionalNombre", "REGIONAL"]) || null,
+                centroFormacionId: getField(row, ["centroFormacionId", "COD_CF"]) || null,
+                centroNombre: getField(row, ["centroNombre", "CENTRO DE FORMACIÓN", "CENTRO DE FORMACION"]) || null,
+                redConocimiento: redConocimiento || area.nombre,
+              },
+              { transaction }
+            );
+            detalles.usuariosCreados += 1;
+          } else {
+            await usuario.update(
+              {
+                documento: usuario.documento || documento || null,
+                nombre: usuario.nombre || nombre,
+                apellido: usuario.apellido || apellido || "",
+                areaId: usuario.areaId || area.id,
+                regionalId: usuario.regionalId || getField(row, ["regionalId", "COD_REGIONAL"]) || null,
+                regionalNombre: usuario.regionalNombre || getField(row, ["regionalNombre", "REGIONAL"]) || null,
+                centroFormacionId: usuario.centroFormacionId || getField(row, ["centroFormacionId", "COD_CF"]) || null,
+                centroNombre: usuario.centroNombre || getField(row, ["centroNombre", "CENTRO DE FORMACIÓN", "CENTRO DE FORMACION"]) || null,
+                redConocimiento: usuario.redConocimiento || redConocimiento || area.nombre,
+              },
+              { transaction }
+            );
+            detalles.usuariosReutilizados += 1;
+          }
+
+          const planInfo = parsePlanMultiplicacion(
+            getField(row, [
+              'OPCIÓN PLAN DE MULTIPLICACIÓN \nACTA DE COMPROMISO',
+              'OPCIÓN PLAN DE MULTIPLICACIÓN ACTA DE COMPROMISO',
+              'OPCION PLAN DE MULTIPLICACION ACTA DE COMPROMISO',
+              'opcion_plan_multiplicacion',
+            ])
+          );
+
+          const payloadCapacitacion = {
+            usuarioId: usuario.id,
+            denominacion_capacitacion: getField(row, ["DENOMINACIÓN DE LA CAPACITACIÓN", "DENOMINACION DE LA CAPACITACION", "denominacion_capacitacion"]),
+            fecha_inicio_cap: parseDateValue(getField(row, ["FECHA INICIO CAPACITACIÓN", "FECHA INICIO CAPACITACION", "fecha_inicio_cap"])),
+            fecha_fin_cap: parseDateValue(getField(row, ["FECHA FIN CAPACITACIÓN", "FECHA FIN CAPACITACION", "fecha_fin_cap"])),
+            fecha_diligenciamiento: parseDateValue(getField(row, ["FECHA DILIGENCIAMIENTO DEL REPORTE PLAN DE MULTIPLICACIÓN", "FECHA DILIGENCIAMIENTO DEL REPORTE PLAN DE MULTIPLICACION", "fecha_diligenciamiento"])),
+            opcion_plan_multiplicacion: planInfo.opcion,
+            acta_compromiso: planInfo.acta,
+            fecha_multiplicacion: parseDateValue(getField(row, ["FECHA EN LA QUE REALIZÓ LA MULTIPLICACIÓN", "FECHA EN LA QUE REALIZO LA MULTIPLICACION", "fecha_multiplicacion"])),
+            validacion_plan: getField(row, ["VALIDACIÓN DEL PLAN DE MULTIPLICACIÓN EJECUTADO POR EL  INSTRUCTOR", "VALIDACION DEL PLAN DE MULTIPLICACION EJECUTADO POR EL INSTRUCTOR", "validacion_plan"]),
+            nombre_delegado_seguimiento: getField(row, ["NOMBRE SUBDIRECTOR O DELEGADO QUE HACE EL SEGUIMIENTO AL PLAN DE MULTIPLICACIÓN", "NOMBRE SUBDIRECTOR O DELEGADO QUE HACE EL SEGUIMIENTO AL PLAN DE MULTIPLICACION", "nombre_delegado_seguimiento"]),
+            descripcion_plan: getField(row, ["DESCRIBA BREVEMENTE PLAN DE MULTIPLICACIÓN", "DESCRIBA BREVEMENTE PLAN DE MULTIPLICACION", "descripcion_plan"]),
+            link_evidencias: getField(row, ["LINK EVIDENCIAS PARA CONSULTA", "link_evidencias"]),
+          };
+
+          const tieneDatosCapacitacion = Object.entries(payloadCapacitacion)
+            .some(([key, value]) => key !== "usuarioId" && value !== null && value !== undefined && String(value).trim() !== "");
+
+          if (!tieneDatosCapacitacion) {
+            continue;
+          }
+
+          const inscripcionExistente = await InscripcionCapacitacion.findOne({
+            where: {
+              usuarioId: usuario.id,
+              denominacion_capacitacion: payloadCapacitacion.denominacion_capacitacion || null,
+              fecha_inicio_cap: payloadCapacitacion.fecha_inicio_cap || null,
+            },
+            transaction,
+          });
+
+          if (!inscripcionExistente) {
+            await InscripcionCapacitacion.create(payloadCapacitacion, { transaction });
+            detalles.inscripcionesCreadas += 1;
+          }
+        }
+
+        return detalles;
+      });
+
+      if (resultado.usuariosCreados === 0 && resultado.inscripcionesCreadas === 0) {
+        return res.status(400).json({
+          mensaje: "No se encontraron usuarios válidos para importar",
+          detalles: resultado,
+        });
+      }
+
+      res.json({
+        mensaje: `Importación completada: ${resultado.usuariosCreados} usuarios nuevos, ${resultado.usuariosReutilizados} existentes, ${resultado.inscripcionesCreadas} inscripciones de capacitación`,
+        detalles: resultado,
+      });
+    } catch (err) {
+      console.error("Error al procesar importación masiva:", err);
+      res.status(500).json({ mensaje: "Error al importar usuarios", error: err.message });
+    }
+  }
+);
+
 
 router.get("/perfil", verifyToken, async (req, res) => {
   const usuario = await Usuario.findByPk(req.usuario.id, {
@@ -195,13 +605,13 @@ router.delete("/eliminar/:id", verifyToken, async (req, res) => {
   }
 });
 
-router.post("/cambiar-password", async (req, res) => {
+router.post("/cambiar-password", verifyToken, async (req, res) => {
   try {
-    const { email, nuevaPassword } = req.body;
+    const { email, userId, passwordActual, nuevaPassword } = req.body;
 
-    if (!email || !nuevaPassword) {
+    if ((!email && !userId) || !nuevaPassword) {
       return res.status(400).json({
-        mensaje: "El email y la nueva contraseña son requeridos"
+        mensaje: "Debes indicar el usuario (email o userId) y la nueva contraseña"
       });
     }
 
@@ -211,16 +621,45 @@ router.post("/cambiar-password", async (req, res) => {
       });
     }
 
-    // Buscar el usuario
-    const usuario = await Usuario.findOne({ where: { email } });
+    const usuario = userId
+      ? await Usuario.findByPk(userId)
+      : await Usuario.findOne({ where: { email } });
+
     if (!usuario) {
       return res.status(404).json({
-        mensaje: "No existe un usuario con ese correo electrónico"
+        mensaje: "No existe el usuario indicado"
       });
     }
-    // Hashear la nueva contraseña
+
+    const esMismoUsuario = Number(req.usuario.id) === Number(usuario.id);
+    const esAdmin = req.usuario.rol === "Administrador";
+
+    if (!esMismoUsuario && !esAdmin) {
+      return res.status(403).json({
+        mensaje: "No tienes permisos para cambiar la contraseña de este usuario"
+      });
+    }
+
+    if (!esAdmin) {
+      if (!passwordActual) {
+        return res.status(400).json({
+          mensaje: "La contraseña actual es requerida"
+        });
+      }
+
+      const passwordValida = usuario.password.startsWith("$2a$") || usuario.password.startsWith("$2b$")
+        ? await bcrypt.compare(passwordActual, usuario.password)
+        : passwordActual === usuario.password;
+
+      if (!passwordValida) {
+        return res.status(401).json({
+          mensaje: "La contraseña actual es incorrecta"
+        });
+      }
+    }
+
     const passwordHash = await bcrypt.hash(nuevaPassword, 10);
-    // Actualizar la contraseña
+
     await usuario.update({ password: passwordHash });
 
     res.status(200).json({

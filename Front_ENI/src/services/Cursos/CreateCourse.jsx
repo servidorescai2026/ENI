@@ -1,3 +1,5 @@
+import { apiUrl } from "../../config/api";
+
 export default function CreateCourse(formData) {
   const token = localStorage.getItem("token");
 
@@ -37,7 +39,7 @@ export default function CreateCourse(formData) {
     fechaCierreInscripcion: formData.fechaCierreInscripcion || null,
   };
 
-  return fetch("http://localhost:3000/api/cursos", {
+  return fetch(apiUrl("/api/cursos"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

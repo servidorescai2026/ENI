@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "./config/api";
 
 export default function EnviarNotificacionPorArea() {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ export default function EnviarNotificacionPorArea() {
   // const token = localStorage.getItem("token");
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/areas")
+    fetch(apiUrl("/api/areas"))
       .then((res) => res.json())
       .then((data) => setAreas(data.areas || data))
       .catch(() => setEstado("⚠️ No se pudieron cargar las áreas"));
@@ -41,7 +42,7 @@ export default function EnviarNotificacionPorArea() {
       });
 
       const res = await fetch(
-        "http://localhost:3000/api/usuarios/notificar-por-area",
+        apiUrl("/api/usuarios/notificar-por-area"),
         {
           method: "POST",
           headers: {

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "./config/api";
+import DeleteUsers from "./services/Usuarios/DeleteUsers";
 
 export default function GestionUsuarios() {
   const navigate = useNavigate();
@@ -45,7 +47,7 @@ export default function GestionUsuarios() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3000/api/usuarios", {
+      const response = await fetch(apiUrl("/api/usuarios"), {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -123,9 +125,15 @@ export default function GestionUsuarios() {
     setMostrarFormulario(true);
   };
 
-  const eliminarUsuario = (id) => {
+  const eliminarUsuario = async (id) => {
     if (window.confirm("¿Estás seguro de que quieres eliminar este usuario?")) {
-      setUsuarios(prev => prev.filter(u => u.id !== id));
+      try {
+        await DeleteUsers(id);
+        setUsuarios(prev => prev.filter(u => u.id !== id));
+      } catch (error) {
+        console.error("Error eliminando usuario:", error);
+        alert("No se pudo eliminar el usuario en el servidor");
+      }
     }
   };
 
@@ -171,6 +179,17 @@ export default function GestionUsuarios() {
                 <div className="icon-presencial"></div>
               </div>
               <span>Volver al Panel</span>
+            </button>
+
+            <button 
+              className="btn-anim" 
+              onClick={() => navigate('/upload-usuarios')}
+              type="button"
+            >
+              <div className="btn-icon">
+                <div className="icon-virtual"></div>
+              </div>
+              <span>Carga masiva</span>
             </button>
 
             <button 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "./config/api";
 
 // import
 export default function Administrador() {
@@ -27,7 +28,7 @@ export default function Administrador() {
       if (!token) return;
       
       try {
-        const res = await fetch("http://localhost:3000/api/usuarios/mis-notificaciones", {
+        const res = await fetch(apiUrl("/api/usuarios/mis-notificaciones"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

@@ -1,9 +1,11 @@
+import { apiUrl } from "../../config/api";
+
 async function GetAllAreas() {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await fetch('http://localhost:3000/api/areas', {
+        const response = await fetch(apiUrl('/api/areas'), {
             method: 'GET',
             headers: {
                 "Content-Type": "application/json",

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "./config/api";
 
 export default function SubirEvidencias() {
   const navigate = useNavigate();
@@ -52,7 +53,7 @@ export default function SubirEvidencias() {
         formData.append("archivos", a.file);
       });
 
-      const res = await fetch("http://localhost:3000/api/usuarios/subir-evidencia", {
+      const res = await fetch(apiUrl("/api/usuarios/subir-evidencia"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl } from "./config/api";
 import GetAllCourses from "./services/Cursos/GetAllCourses";
 import CreateCourse from "./services/Cursos/CreateCourse";
 import UpdateCourse from "./services/Cursos/UpdateCourse";
@@ -51,7 +52,7 @@ export default function GestionCursos() {
 
   const loadAreas = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/areas");
+      const response = await fetch(apiUrl("/api/areas"));
       const data = await response.json();
       setAreas(data.areas || data);
     } catch (error) {

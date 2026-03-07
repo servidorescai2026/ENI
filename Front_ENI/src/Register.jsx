@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 
+import { apiUrl } from "./config/api";
 import { RECAPTCHA_SITE_KEY } from "./config/recaptcha";
 import { iniciarTourRegistro } from "./utils/tours";
 
@@ -27,7 +28,7 @@ export default function Registro() {
 
    useEffect(() => {
     // Cargar áreas al montar el componente
-    fetch("http://localhost:3000/api/areas")
+    fetch(apiUrl("/api/areas"))
       .then((res) => res.json())
       .then((data) => setAreas(data.areas || data)) // depende de cómo las devuelves
       .catch(() =>
@@ -56,7 +57,7 @@ export default function Registro() {
     }
 
     try {
-      const res = await fetch("http://localhost:3000/api/usuarios/register", {
+      const res = await fetch(apiUrl("/api/usuarios/register"), {
         method: "POST",
         mode: "cors",
         headers: { "Content-Type": "application/json" },

@@ -1,12 +1,7 @@
+import GetAllUsers from "./GetAllUsers";
+
 async function GetOneUsers(id) {
-    const response = await fetch(`http://127.0.0.1:8000/api/Usuarios/${id}`, {
-        method: 'GET',
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-    })
-    const data = await response.json();
-    return data;
+    const users = await GetAllUsers();
+    return users.find((user) => Number(user.id) === Number(id)) || null;
 }
 export default GetOneUsers;

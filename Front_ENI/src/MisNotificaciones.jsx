@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiUrl, uploadsUrl } from "./config/api";
 
 export default function MisNotificaciones() {
   const [notificaciones, setNotificaciones] = useState([]);
@@ -15,7 +16,7 @@ export default function MisNotificaciones() {
       return;
     }
 
-    fetch("http://localhost:3000/api/usuarios/mis-notificaciones", {
+    fetch(apiUrl("/api/usuarios/mis-notificaciones"), {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -29,7 +30,7 @@ export default function MisNotificaciones() {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        `http://localhost:3000/api/usuarios/notificaciones/${id}/marcar-leida`,
+        apiUrl(`/api/usuarios/notificaciones/${id}/marcar-leida`),
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
@@ -81,7 +82,7 @@ export default function MisNotificaciones() {
       }
       return `${ruta}${ruta.includes("?") ? "&" : "?"}v=${Date.now()}`;
     }
-    return `http://localhost:3000/${ruta}`;
+    return uploadsUrl(`/${ruta.replace(/^\/+/, "")}`);
   };
 
 

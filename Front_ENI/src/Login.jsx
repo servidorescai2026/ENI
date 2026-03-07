@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
+import { apiUrl } from "./config/api";
 import { RECAPTCHA_SITE_KEY } from "./config/recaptcha";
 import { iniciarTourLogin } from "./utils/tours";
 
@@ -31,7 +32,7 @@ export default function Login() {
 
     try {
       setIsLoggingIn(true);
-      const res = await fetch("http://localhost:3000/api/usuarios/login", {
+      const res = await fetch(apiUrl("/api/usuarios/login"), {
         method: "POST",
         mode: "cors",
         headers: { "Content-Type": "application/json" },

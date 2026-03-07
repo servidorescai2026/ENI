@@ -1,4 +1,5 @@
 import authFetch from "../../utils/authFetch";
+import { apiUrl } from "../../config/api";
 
 async function GetUserEnrollments() {
     const token = localStorage.getItem("token");
@@ -11,7 +12,7 @@ async function GetUserEnrollments() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await authFetch('http://localhost:3000/api/inscripciones/usuario', {
+        const response = await authFetch(apiUrl('/api/inscripciones/usuario'), {
             method: 'GET',
             headers: {
                 "Content-Type": "application/json",

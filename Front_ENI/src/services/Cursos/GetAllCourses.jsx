@@ -1,11 +1,12 @@
 import authFetch from "../../utils/authFetch";
+import { apiUrl } from "../../config/api";
 
 async function GetAllCourses() {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await authFetch('http://localhost:3000/api/cursos', {
+        const response = await authFetch(apiUrl('/api/cursos'), {
             method: 'GET',
             headers: {
                 "Content-Type": "application/json",

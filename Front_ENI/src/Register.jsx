@@ -4,7 +4,6 @@ import ReCAPTCHA from "react-google-recaptcha";
 
 import { apiUrl } from "./config/api";
 import { RECAPTCHA_SITE_KEY } from "./config/recaptcha";
-import { iniciarTourRegistro } from "./utils/tours";
 
 export default function Registro() {
   const navigate = useNavigate();
@@ -110,14 +109,6 @@ export default function Registro() {
 
   return (
     <div className="registro-container">
-      <button
-        type="button"
-        className="btn-tour"
-        onClick={iniciarTourRegistro}
-        title="Ver guía de uso"
-      >
-        ❓ Ayuda
-      </button>
       <form className="registro-form" onSubmit={handleSubmit}>
         <h2>Registro de Usuario</h2>
 

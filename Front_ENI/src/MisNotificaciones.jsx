@@ -5,6 +5,7 @@ import { apiUrl, uploadsUrl } from "./config/api";
 export default function MisNotificaciones() {
   const [notificaciones, setNotificaciones] = useState([]);
   const [estado, setEstado] = useState("");
+  const [fechaFiltro, setFechaFiltro] = useState("");
   const noLeidas = notificaciones.filter((n) => !n.leida).length;
   const navigate = useNavigate();
 
@@ -49,6 +50,39 @@ export default function MisNotificaciones() {
     }
   };
 
+  const eliminarTodas = async () => {
+    if (notificaciones.length === 0) {
+      setEstado("⚠️ No tienes notificaciones para eliminar");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      "¿Seguro que deseas eliminar todas tus notificaciones? Esta acción no se puede deshacer."
+    );
+
+    if (!confirmar) return;
+
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(apiUrl("/api/usuarios/notificaciones/eliminar-todas"), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setEstado(`⚠️ ${data.mensaje || "No se pudieron eliminar las notificaciones"}`);
+        return;
+      }
+
+      setNotificaciones([]);
+      setEstado(`✅ ${data.mensaje || "Notificaciones eliminadas"}`);
+    } catch (e) {
+      console.error(e);
+      setEstado("⚠️ Error de conexión al eliminar las notificaciones");
+    }
+  };
+
   const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
   const esAdmin = usuario.rol === "Administrador";
 
@@ -85,6 +119,20 @@ export default function MisNotificaciones() {
     return uploadsUrl(`/${ruta.replace(/^\/+/, "")}`);
   };
 
+  const obtenerFechaLocal = (fecha) => {
+    const d = new Date(fecha);
+    if (Number.isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const notificacionesFiltradas = notificaciones.filter((n) => {
+    if (!fechaFiltro) return true;
+    return obtenerFechaLocal(n.creadaEn) === fechaFiltro;
+  });
+
 
   return (
 
@@ -99,13 +147,37 @@ export default function MisNotificaciones() {
             : "Aquí verás todos los mensajes que el administrador ha enviado a tu red."}
         </p>
 
+        <div className="form-group" style={{ marginTop: "0.75rem" }}>
+          <label>Buscar por fecha</label>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <input
+              type="date"
+              className="input-control"
+              value={fechaFiltro}
+              onChange={(e) => setFechaFiltro(e.target.value)}
+            />
+            <button
+              type="button"
+              className="notificacion-btn"
+              onClick={() => setFechaFiltro("")}
+              disabled={!fechaFiltro}
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+
         {estado && <p className="notificacion-estado">{estado}</p>}
 
-        {notificaciones.length === 0 ? (
-          <p className="notificaciones-empty">No tienes notificaciones.</p>
+        {notificacionesFiltradas.length === 0 ? (
+          <p className="notificaciones-empty">
+            {fechaFiltro
+              ? "No hay notificaciones para la fecha seleccionada."
+              : "No tienes notificaciones."}
+          </p>
         ) : (
           <ul className="notificaciones-list">
-            {notificaciones.map((n) => {
+            {notificacionesFiltradas.map((n) => {
               const archivosData = parseArchivos(n.archivos);
               const archivos = (archivosData.files || [])
                 .map((item) => (typeof item === "string" ? item : item?.url || ""))
@@ -181,9 +253,15 @@ export default function MisNotificaciones() {
         <div className="notificacion-actions notificacion-actions-bottom">
           <button
             type="button"
-            className="notificacion-btn notificacion-btn-cerrar"
+            className="notificacion-btn"
+            onClick={eliminarTodas}>
+            Eliminar todas mis notificaciones
+          </button>
+          <button
+            type="button"
+            className="btn-panel"
             onClick={() => navigate(esAdmin ? "/administrador" : "/usuario")}>
-            Volver a mi panel
+            🏠 Panel de Usuario
           </button>
         </div>
       </div>

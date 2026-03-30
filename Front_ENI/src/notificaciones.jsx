@@ -4,6 +4,8 @@ import { apiUrl } from "./config/api";
 
 export default function EnviarNotificacionPorArea() {
   const navigate = useNavigate();
+  const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+  const esAdmin = usuario.rol === "Administrador";
   const [mensaje, setMensaje] = useState("");
   const [asunto, setAsunto] = useState("");
   const [areas, setAreas] = useState([]);
@@ -308,11 +310,11 @@ export default function EnviarNotificacionPorArea() {
         <div className="notificacion-actions">
           <button
             type="button"
-            className="btn-anim btn-cerrar"
-            onClick={() => navigate("/administrador")}
-          >
-            Volver a mi panel
+            className="btn-panel"
+            onClick={() => navigate(esAdmin ? "/administrador" : "/usuario")}>
+            🏠 Panel de Usuario
           </button>
+          
           <button
             className="btn-anim btn-notificacion"
             type="button"

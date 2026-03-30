@@ -176,15 +176,8 @@ export default function Reportes() {
               <span>Generar Reporte</span>
             </button>
 
-            <button 
-              className="btn-anim btn-notificacion" 
-              onClick={volverAlPanel}
-              type="button"
-            >
-              <div className="btn-icon">
-                <div className="icon-presencial"></div>
-              </div>
-              <span>Volver al Panel</span>
+            <button className="btn-panel" onClick={volverAlPanel} type="button">
+              🏠 Panel de Usuario
             </button>
 
             <button 

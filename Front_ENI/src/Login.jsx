@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 import { apiUrl } from "./config/api";
 import { RECAPTCHA_SITE_KEY } from "./config/recaptcha";
-import { iniciarTourLogin } from "./utils/tours";
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -85,14 +84,6 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <button 
-        type="button" 
-        className="btn-tour" 
-        onClick={iniciarTourLogin}
-        title="Ver guía de uso"
-      >
-        ❓ Ayuda
-      </button>
       <form className="login-form" onSubmit={handleSubmit}>
         <h2>Iniciar Sesión</h2>
 

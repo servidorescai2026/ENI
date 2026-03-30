@@ -153,8 +153,8 @@ export default function Monitoria() {
   return (
     <div className="monitoria-container">
       <header className="monitoria-header">
-        <button className="btn-volver" onClick={() => navigate("/admin")}>
-          ← Volver al Panel
+        <button className="btn-panel" onClick={() => navigate("/admin")}>
+          🏠 Panel de Usuario
         </button>
         <h2>📊 Monitoría de Formadores</h2>
         <p className="monitoria-subtitle">

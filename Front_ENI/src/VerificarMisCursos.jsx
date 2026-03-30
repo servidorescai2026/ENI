@@ -47,29 +47,19 @@ export default function VerificarMisCursos() {
   return (
     <div className="verificar-cursos-container">
       <header className="verificar-cursos-header">
-        <div className="header-buttons">
-          <button
-            className="btn-panel"
-            onClick={() => navigate("/usuario")}
-          >
-            🏠 Panel de Usuario
-          </button>
-        </div>
-
         <div className="header-top">
           <div className="header-title-section">
             <h2>📚 Mis Cursos Asignados</h2>
             <p className="header-subtitle">
-              Cursos del área: <strong>{usuario.areaId || "N/A"}</strong>
+              LOS CURSOS PARA TU AREA: <strong>{usuario.areaId || "N/A"}</strong>
             </p>
           </div>
           <div className="header-buttons">
             <button
-              className="btn-volver"
-              onClick={() => navigate("/usuario")}
-            >
-              ← Volver a mi Panel
-            </button>
+            className="btn-panel"
+            onClick={() => navigate("/usuario")}>
+            🏠 Panel de Usuario
+          </button>
             <button
               className="btn-recargar"
               onClick={loadCursos}

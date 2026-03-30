@@ -959,5 +959,22 @@ router.post("/notificaciones/:id/marcar-leida", verifyToken, async (req, res) =>
   }
 });
 
+// Eliminar todas las notificaciones del usuario autenticado
+router.delete("/notificaciones/eliminar-todas", verifyToken, async (req, res) => {
+  try {
+    const totalEliminadas = await Notificacion.destroy({
+      where: { usuarioId: req.usuario.id },
+    });
+
+    res.json({
+      mensaje: "Notificaciones eliminadas correctamente",
+      totalEliminadas,
+    });
+  } catch (err) {
+    console.error("Error al eliminar todas las notificaciones:", err);
+    res.status(500).json({ mensaje: "Error al eliminar notificaciones" });
+  }
+});
+
 
 export default router;

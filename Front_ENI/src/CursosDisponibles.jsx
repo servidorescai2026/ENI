@@ -174,9 +174,11 @@ export default function CursosDisponibles() {
         <div className="header-top">
           <h2>Cursos Disponibles - {usuario.nombre}</h2>
           <div className="header-buttons">
-            <button className="btn-volver" onClick={() => navigate("/usuario")}>
-              ← Volver a mi Panel
-            </button>
+            <button
+            className="btn-panel"
+            onClick={() => navigate("/usuario")}>
+            🏠 Panel de Usuario
+          </button>
           </div>
         </div>
       </header>
@@ -192,7 +194,6 @@ export default function CursosDisponibles() {
         ) : cursos.length === 0 ? (
           <div className="no-cursos">
             <h4>No hay cursos disponibles</h4>
-            <p>Contacta con un administrador para que agregue nuevos cursos.</p>
           </div>
         ) : (
           <div className="cursos-grid">

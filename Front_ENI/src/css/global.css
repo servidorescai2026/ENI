@@ -5,6 +5,16 @@
   box-sizing: border-box;
 }
 
+/*
+  Mapa rapido del archivo (busqueda por bloques):
+  1) Base y tokens globales
+  2) Animaciones
+  3) Vistas principales (Principal/Login/Registro/Usuario/Admin)
+  4) Modulos (Cursos, Notificaciones, Reportes, Monitoria, Configuracion)
+  5) Responsive
+  6) Unificacion global de botones
+*/
+
 body {
   font-family: "din-2014", Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #1a237e 0%, #3949ab 50%, #5c6bc0 100%);
@@ -55,28 +65,80 @@ body {
   }
 }
 
+@keyframes helpPulse {
+  0%,
+  100% {
+    box-shadow: 0 12px 30px rgba(35, 240, 175, 0.35);
+  }
+
+  50% {
+    box-shadow: 0 16px 38px rgba(35, 240, 175, 0.35);
+  }
+}
+
 /* ========== Botón tour global ========== */
 .btn-tour {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #1a237e;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 25px;
+  top: clamp(78px, 9vw, 112px);
+  right: clamp(14px, 2.2vw, 24px);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: linear-gradient(135deg, #274c85 0%, #4737f5 48%, #2666f1 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 0.68rem 1rem;
+  border-radius: 999px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  z-index: 1000;
+  font-weight: 800;
+  font-size: 0.92rem;
+  letter-spacing: 0.2px;
+  box-shadow: 0 12px 30px rgba(34, 231, 129, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+  z-index: 1200;
+  animation: helpPulse 2.6s ease-in-out infinite;
+}
+
+.btn-tour-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.btn-tour-text {
+  line-height: 1;
 }
 
 .btn-tour:hover {
-  background: #ffca28;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px) scale(1.03);
+  filter: saturate(1.08);
+  box-shadow: 0 16px 34px rgba(11, 34, 84, 0.35);
+}
+
+.btn-tour:active {
+  transform: translateY(0) scale(0.98);
+}
+
+@media (max-width: 768px) {
+  .btn-tour {
+    top: auto;
+    bottom: 14px;
+    right: 14px;
+    padding: 0.62rem 0.9rem;
+    font-size: 0.86rem;
+  }
+
+  .btn-tour-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+    font-size: 0.84rem;
+  }
 }
 
 /* ========== Portada / principal (index) ========== */
@@ -170,6 +232,11 @@ footer a:hover {
 :root {
   --accent: #ffca28;
   --bg: #0b102f;
+  --btn-blue-start: #2196f3;
+  --btn-blue-end: #1976d2;
+  --btn-blue-hover-start: #1976d2;
+  --btn-blue-hover-end: #1565c0;
+  --btn-hover-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
 }
 
 .principal-page {
@@ -233,14 +300,6 @@ footer a:hover {
   text-align: center;
   padding: 24px 20px;
   width: 100%;
-}
-
-/* Asegura que el contenedor interno también esté centrado */
-.hero-section .container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
 }
 
 /* Asegura que el contenedor interno también esté centrado */
@@ -422,15 +481,6 @@ footer a:hover {
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.3px;
-}
-
-.header-buttons .btn-volver {
-  background: rgba(255,255,255,0.15);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.08);
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
 }
 
 .welcome-section {
@@ -754,7 +804,7 @@ footer a:hover {
 
 .emoji-spin {
   display: inline-block;
-  animation: spinEmoji 3s infinite linear;
+  animation: reverse;
 }
 
 .header-buttons {
@@ -1158,10 +1208,6 @@ footer a:hover {
   box-shadow: 0 7px 16px rgba(0, 0, 0, 0.3);
 }
 
-.notificacion-btn-cerrar {
-  background: linear-gradient(135deg, #f44336, #d32f2f);
-}
-
 .notificacion-actions-bottom {
   margin-top: 1.5rem;
 }
@@ -1211,27 +1257,6 @@ footer a:hover {
   display: flex;
   gap: 1rem;
   align-items: center;
-}
-
-.gestion-cursos-header .btn-volver {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 0.8rem 1.5rem;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.gestion-cursos-header .btn-volver:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 .gestion-cursos-header .btn-nuevo {
@@ -2195,7 +2220,7 @@ footer a:hover {
   }
 
   .notificacion-btn,
-  .notificacion-btn-cerrar {
+  .btn-panel {
     width: 100%;
     justify-content: center;
   }
@@ -2209,7 +2234,7 @@ footer a:hover {
     width: 100%;
   }
 
-  .gestion-cursos-header .btn-volver,
+  .gestion-cursos-header .btn-panel,
   .gestion-cursos-header .btn-nuevo {
     width: 100%;
   }
@@ -2248,7 +2273,8 @@ footer a:hover {
     padding: 1rem;
   }
 
-  .btn-volver {
+  .btn-volver,
+  .btn-panel {
     width: 100%;
   }
 
@@ -3118,7 +3144,7 @@ footer a:hover {
     width: 100%;
   }
 
-  .gestion-cursos-header .btn-volver,
+  .gestion-cursos-header .btn-panel,
   .gestion-cursos-header .btn-nuevo {
     width: 100%;
   }
@@ -3170,7 +3196,8 @@ footer a:hover {
     width: 100%;
   }
 
-  .btn-volver {
+  .btn-volver,
+  .btn-panel {
     width: 100%;
   }
 
@@ -4689,4 +4716,52 @@ footer a:hover {
     height: 20px;
     font-size: 0.65rem;
   }
+}
+
+/* ========== Unificación global de botones ========== */
+#root button:not([title="Quitar área"]):not(.btn-tour) {
+  min-height: 44px !important;
+  padding: 0.78rem 1.25rem !important;
+  border-radius: 12px !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  transition: transform 0.24s ease, box-shadow 0.24s ease, filter 0.24s ease !important;
+}
+
+#root button:not([title="Quitar área"]):not(.btn-tour):hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: var(--btn-hover-shadow) !important;
+  filter: saturate(1.06);
+}
+
+#root button:not([title="Quitar área"]):not(.btn-tour):active:not(:disabled) {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+#root .btn-panel,
+#root .btn-volver,
+#root .btn-notificacion,
+#root .btn-notificaciones,
+#root .btn-cursos,
+#root .btn-mis-cursos,
+#root .btn-evidencias,
+#root .btn-ver-detalles,
+#root .btn-ver-todos,
+#root .notificacion-btn {
+  background: linear-gradient(135deg, var(--btn-blue-start), var(--btn-blue-end)) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+#root .btn-panel:hover,
+#root .btn-volver:hover,
+#root .btn-notificacion:hover,
+#root .btn-notificaciones:hover,
+#root .btn-cursos:hover,
+#root .btn-mis-cursos:hover,
+#root .btn-evidencias:hover,
+#root .btn-ver-detalles:hover,
+#root .btn-ver-todos:hover,
+#root .notificacion-btn:hover {
+  background: linear-gradient(135deg, var(--btn-blue-hover-start), var(--btn-blue-hover-end)) !important;
 }

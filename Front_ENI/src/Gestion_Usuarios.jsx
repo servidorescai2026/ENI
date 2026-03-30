@@ -163,14 +163,10 @@ export default function GestionUsuarios() {
           <div className="header-buttons">
 
             <button 
-              className="btn-anim btn-notificacion" 
+              className="btn-panel" 
               onClick={volverAlPanel}
-              type="button"
-            >
-              <div className="btn-icon">
-                <div className="icon-presencial"></div>
-              </div>
-              <span>Volver al Panel</span>
+              type="button">
+                🏠 Panel de Usuario
             </button>
 
             <button 

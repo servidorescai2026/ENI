@@ -142,10 +142,10 @@ export default function GestionArchivos() {
       <header className="admin-header">
         <h1>📁 Gestión de Archivos</h1>
         <button
-          className="btn-anim btn-cerrar"
+          className="btn-panel"
           onClick={() => navigate("/administrador")}
         >
-          Volver al panel
+          🏠 Panel de Usuario
         </button>
       </header>
 

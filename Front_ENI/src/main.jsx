@@ -18,11 +18,13 @@ import Reportes from "./Reportes";
 import Configuracion from "./Configuracion";
 import Monitoria from "./Monitoria";
 import BulkUpload from "./BulkUpload";
+import TourHelpButton from "./TourHelpButton";
 import "./css/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
+      <TourHelpButton />
       <Routes>
         <Route path="/" element={<Principal />} />
         <Route path="/register" element={<Registro />} />

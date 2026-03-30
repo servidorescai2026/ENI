@@ -22,10 +22,10 @@ export default function SubirEvidencias() {
           </p>
           <button
             type="button"
-            className="btn-anim btn-cerrar"
+            className="btn-panel"
             onClick={() => navigate("/administrador")}
           >
-            Volver al panel
+            🏠 Panel de Usuario
           </button>
         </div>
       </div>
@@ -185,11 +185,9 @@ export default function SubirEvidencias() {
 
         <div className="notificacion-actions" style={{ marginTop: "1.5rem" }}>
           <button
-            type="button"
-            className="btn-anim btn-cerrar"
-            onClick={() => navigate("/usuario")}
-          >
-            Volver a mi panel
+            className="btn-panel"
+            onClick={() => navigate("/usuario")}>
+            🏠 Panel de Usuario
           </button>
           <button
             className="btn-anim btn-notificacion"

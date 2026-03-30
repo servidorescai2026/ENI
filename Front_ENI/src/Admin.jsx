@@ -108,13 +108,6 @@ export default function Administrador() {
 
 
           <div className="header-buttons">
-            <button className="btn-anim" onClick={() => navigate("/register")}>
-              <div className="btn-icon">
-                <div className="icon-virtual"></div>
-              </div>
-              <span>Registrar nuevo usuario</span>
-            </button>
-
             <button className="btn-anim btn-notificacion" onClick={() => navigate("/notificaciones")}>
               <div className="btn-icon">
                 <div className="icon-presencial"></div>

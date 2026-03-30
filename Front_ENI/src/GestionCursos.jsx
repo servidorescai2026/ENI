@@ -226,8 +226,8 @@ export default function GestionCursos() {
             <p className="header-subtitle">Administra los cursos disponibles en la plataforma</p>
           </div>
           <div className="header-buttons">
-            <button className="btn-volver" onClick={() => navigate("/admin")}>
-              ← Volver al Panel
+            <button className="btn-panel" onClick={() => navigate("/admin")}>
+              🏠 Panel de Usuario
             </button>
             <button className="btn-nuevo" onClick={() => {
               setShowForm(true);

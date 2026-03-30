@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiUrl } from "./config/api";
 import DeleteUsers from "./services/Usuarios/DeleteUsers";
+import GetAllUsers from "./services/Usuarios/GetAllUsers";
 
 export default function GestionUsuarios() {
   const navigate = useNavigate();
@@ -46,20 +46,7 @@ export default function GestionUsuarios() {
   const cargarUsuarios = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const response = await fetch(apiUrl("/api/usuarios"), {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error("Error al cargar usuarios");
-      }
-      
-      const data = await response.json();
-      // Normalizar respuesta (puede venir como array o en objeto)
-      const usuariosArray = Array.isArray(data) ? data : (data.usuarios || []);
+      const usuariosArray = await GetAllUsers();
       setUsuarios(usuariosArray);
     } catch (error) {
       console.error("Error cargando usuarios:", error);
@@ -148,12 +135,17 @@ export default function GestionUsuarios() {
   const cerrarSesion = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
+    localStorage.removeItem("requiereCambioPassword");
     navigate("/login");
   };
 
   const volverAlPanel = () => {
     navigate("/administrador");
   };
+
+  const totalFormadoresConClaveTemporal = filtrarUsuarios.filter(
+    (usuarioItem) => usuarioItem.requiereCambioPassword
+  ).length;
 
   if (!usuario) return <p>Cargando...</p>;
 
@@ -225,7 +217,14 @@ export default function GestionUsuarios() {
               <span className="stat-badge">
                 Total Formadores: {usuarios.filter(u => u.rol === 'Formador').length}
               </span>
-              
+              <span className="stat-badge" style={{
+                background: totalFormadoresConClaveTemporal > 0
+                  ? 'linear-gradient(135deg, #ffb300, #f57c00)'
+                  : 'linear-gradient(135deg, #2e7d32, #1b5e20)',
+                color: '#fff'
+              }}>
+                Clave temporal: {totalFormadoresConClaveTemporal}
+              </span>
             </div>
           </div>
 
@@ -267,7 +266,7 @@ export default function GestionUsuarios() {
                   }}>
                     <th style={{ padding: '1.3rem 1.5rem', color: '#a8d8ff' }}>👨‍🏫 Formador</th>
                     <th style={{ padding: '1.3rem 1.5rem', color: '#a8d8ff' }}>📧 Email</th>
-
+                    <th style={{ padding: '1.3rem 1rem', color: '#a8d8ff', textAlign: 'center' }}>🔐 Estado clave</th>
                     <th style={{ padding: '1.3rem 1.5rem', color: '#a8d8ff', textAlign: 'center' }}>⚙️ Acciones</th>
                   </tr>
                 </thead>
@@ -295,6 +294,28 @@ export default function GestionUsuarios() {
                       </td>
                       <td style={{ padding: '1.2rem 1.5rem', color: '#b0c4de', fontSize: '0.9rem' }}>
                         {usuarioItem.email}
+                      </td>
+                      <td style={{ padding: '1.2rem 1rem', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '140px',
+                          padding: '0.45rem 0.8rem',
+                          borderRadius: '999px',
+                          fontSize: '0.82rem',
+                          fontWeight: '700',
+                          letterSpacing: '0.02em',
+                          color: usuarioItem.requiereCambioPassword ? '#fff3cd' : '#d7ffe1',
+                          background: usuarioItem.requiereCambioPassword
+                            ? 'rgba(245, 124, 0, 0.22)'
+                            : 'rgba(56, 142, 60, 0.22)',
+                          border: usuarioItem.requiereCambioPassword
+                            ? '1px solid rgba(255, 179, 0, 0.45)'
+                            : '1px solid rgba(76, 175, 80, 0.45)'
+                        }}>
+                          {usuarioItem.requiereCambioPassword ? 'Temporal pendiente' : 'Actualizada'}
+                        </span>
                       </td>
                       <td style={{ padding: '1.2rem 1.5rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '0.7rem', justifyContent: 'center' }}>

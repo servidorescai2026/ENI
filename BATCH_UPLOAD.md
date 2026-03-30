@@ -35,7 +35,7 @@ Y estas columnas para `inscripciones_capacitacion`:
 - `DESCRIBA BREVEMENTE PLAN DE MULTIPLICACIÓN`
 - `LINK EVIDENCIAS PARA CONSULTA`
 
-> **Contraseña por defecto:** todos los usuarios nuevos reciben la contraseña `ENI2024*` (hashada internamente). Pueden cambiarla posteriormente con el endpoint `/usuarios/cambiar-password`.
+> **Contraseña por defecto:** todos los usuarios nuevos reciben la contraseña `ENI2024*` (hashada internamente). Desde ahora, cuando ingresan por primera vez con esa clave, el sistema los obliga a cambiarla mediante el endpoint `/usuarios/cambiar-password` antes de poder continuar.
 
 Las filas que no cuenten con `nombre`, `email` y una red/área válida serán ignoradas. Si el usuario ya existe, se reutiliza y se intenta crear la inscripción de capacitación sin duplicarla.
 
@@ -55,8 +55,9 @@ Se añadió `xlsx` al `package.json` para leer hojas de cálculo y CSV.
   2. Convierte la primera hoja en JSON.
   3. Itera filas, valida datos y busca el área por código, red o área temática.
   4. Genera contraseña genérica (`ENI2024*`) para usuarios nuevos.
-  5. Crea o reutiliza usuarios existentes.
-  6. Inserta registros en `inscripciones_capacitacion` cuando la fila trae datos de capacitación.
+  5. Marca la sesión para exigir cambio obligatorio de contraseña en el primer ingreso.
+  6. Crea o reutiliza usuarios existentes.
+  7. Inserta registros en `inscripciones_capacitacion` cuando la fila trae datos de capacitación.
 
 - **Respuesta**: objeto con mensaje e incluso la lista de correos importados.
 

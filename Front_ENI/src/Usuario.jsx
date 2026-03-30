@@ -84,6 +84,7 @@ export default function Usuario() {
   const cerrarSesion = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
+    localStorage.removeItem("requiereCambioPassword");
     navigate("/login");
   };
 

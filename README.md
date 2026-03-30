@@ -97,6 +97,7 @@ POST   /api/usuarios/cambiar-password  Cambiar contraseña (requiere token)
 - `email` / `Email` / `CORREO` / `correo`
 - `codigoArea` / `codigo` / `codigo_area`
 - **Contraseña por defecto**: `ENI2024*` (hasheada)
+- **Cambio obligatorio de contraseña**: si el usuario inicia sesión con `ENI2024*`, debe actualizarla antes de usar los demás módulos
 - **Rol por defecto**: `Formador`
 
 #### 3️⃣ Cursos y Áreas
@@ -344,12 +345,14 @@ npm run dev
 2. Se valida ReCAPTCHA
 3. Contraseña se hashea en backend
 4. Login devuelve JWT que se almacena localmente
+5. Si la clave corresponde a la contraseña temporal `ENI2024*`, el sistema redirige a `/configuracion` y exige su cambio inmediato
 
 ### 2. Importación Masiva de Usuarios (Admin)
 1. Admin accede a `/gestion-usuarios` → "Carga masiva"
 2. Sube archivo Excel con estructura esperada
 3. Sistema valida columnas y crea usuarios con contraseña `ENI2024*`
-4. Usuarios pueden cambiar contraseña en sus perfiles
+4. En el primer ingreso con esa clave, el usuario queda obligado a cambiarla
+5. Solo después de ese cambio recupera acceso al resto del sistema
 
 ### 3. Gestión de Cursos
 1. Admin crea cursos en `/gestion-cursos`
@@ -393,6 +396,7 @@ npm run dev
 ✅ **Contraseñas**: Hasheadas con bcryptjs (salt rounds: 10)  
 ✅ **Autenticación**: JWT con expiración  
 ✅ **Autorización**: Middleware por rol  
+✅ **Contraseña temporal controlada**: rutas protegidas bloqueadas hasta reemplazar `ENI2024*`  
 ✅ **Validación de entrada**: Middleware y validación en servicios  
 ✅ **CORS**: Configurado para origen específico  
 ✅ **ReCAPTCHA**: Protección en formularios públicos  

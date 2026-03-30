@@ -3711,6 +3711,135 @@ footer a:hover {
   font-weight: 500;
 }
 
+.config-texto-secundario {
+  color: #d9e3ff;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.password-change-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.password-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-grid input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  padding-right: 6.4rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.65rem;
+  transform: translateY(-50%);
+  border: none;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.password-grid input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.password-grid input:focus {
+  outline: none;
+  border-color: #ffca28;
+  box-shadow: 0 0 0 3px rgba(255, 202, 40, 0.15);
+}
+
+.password-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.config-mensaje-password {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #fff;
+  padding: 0.9rem 1rem;
+}
+
+.password-modal-overlay {
+  z-index: 1200;
+}
+
+.password-modal-content {
+  max-width: 520px;
+  text-align: left;
+}
+
+.password-modal-form {
+  margin-top: 1.25rem;
+}
+
+.password-grid-modal input {
+  background: rgba(26, 35, 126, 0.06);
+  border: 1px solid rgba(26, 35, 126, 0.15);
+  color: #1c2746;
+}
+
+.password-grid-modal .password-toggle-btn {
+  background: rgba(26, 35, 126, 0.12);
+  color: #24304f;
+}
+
+.password-grid-modal .password-toggle-btn:hover {
+  background: rgba(26, 35, 126, 0.2);
+}
+
+.password-grid-modal input::placeholder {
+  color: #5f6f91;
+}
+
+.password-modal-actions {
+  margin-top: 1rem;
+}
+
+.password-modal-message {
+  color: #24304f;
+  background: rgba(26, 35, 126, 0.08);
+  border-color: rgba(26, 35, 126, 0.12);
+}
+
+.password-modal-text {
+  color: #24304f;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.password-modal-text-muted {
+  color: #52607a;
+  margin-bottom: 0;
+}
+
 .config-select {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;

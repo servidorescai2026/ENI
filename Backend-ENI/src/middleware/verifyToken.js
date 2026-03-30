@@ -15,6 +15,19 @@ const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.requiereCambioPassword) {
+      const allowedPaths = ["/api/usuarios/cambiar-password"];
+      const canAccess = allowedPaths.some((allowedPath) => req.originalUrl.startsWith(allowedPath));
+
+      if (!canAccess) {
+        return res.status(403).json({
+          mensaje: "Debes cambiar tu contraseña temporal antes de continuar",
+          codigo: "PASSWORD_CHANGE_REQUIRED"
+        });
+      }
+    }
+
     req.usuario = decoded;
     next();
   } catch (error) {

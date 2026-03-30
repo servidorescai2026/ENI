@@ -26,9 +26,26 @@ const authFetch = async (url, options = {}) => {
 
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
+    localStorage.removeItem("requiereCambioPassword");
 
     window.location.href = "/login";
     return;
+  }
+
+  if (response.status === 403) {
+    let data = null;
+
+    try {
+      data = await response.clone().json();
+    } catch {
+      data = null;
+    }
+
+    if (data?.codigo === "PASSWORD_CHANGE_REQUIRED") {
+      localStorage.setItem("requiereCambioPassword", "true");
+      window.location.href = "/configuracion";
+      return;
+    }
   }
 
   return response;

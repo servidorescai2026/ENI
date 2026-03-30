@@ -144,6 +144,7 @@ export default function Reportes() {
   const cerrarSesion = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
+    localStorage.removeItem("requiereCambioPassword");
     navigate("/login");
   };
 

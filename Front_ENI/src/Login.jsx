@@ -47,6 +47,10 @@ export default function Login() {
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("usuario", JSON.stringify(data.usuario));
+        localStorage.setItem(
+          "requiereCambioPassword",
+          data.requiereCambioPassword ? "true" : "false"
+        );
 
         setMensaje("✅ Inicio de sesión exitoso");
         // Resetear el captcha
@@ -56,7 +60,9 @@ export default function Login() {
         setCaptchaToken(null);
 
         setTimeout(() => {
-          if (data.usuario.rol === "Administrador") {
+          if (data.requiereCambioPassword) {
+            navigate("/configuracion");
+          } else if (data.usuario.rol === "Administrador") {
             navigate("/administrador");
           } else {
             navigate("/usuario");

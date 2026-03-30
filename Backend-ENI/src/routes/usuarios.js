@@ -18,6 +18,44 @@ import { uploadEvidenciasToDrive } from "../services/googleDrive.js";
 
 dotenv.config();
 const router = express.Router();
+const TEMP_PASSWORD = "ENI2024*";
+
+const isBcryptHash = (value = "") => value.startsWith("$2a$") || value.startsWith("$2b$");
+
+const hasTemporaryPassword = async (user) => {
+  if (!user?.password) return false;
+  if (isBcryptHash(user.password)) {
+    return bcrypt.compare(TEMP_PASSWORD, user.password);
+  }
+  return user.password === TEMP_PASSWORD;
+};
+
+const buildAuthPayload = async (user) => {
+  const requiereCambioPassword = await hasTemporaryPassword(user);
+
+  return {
+    tokenPayload: {
+      id: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      rol: user.rol,
+      areaId: user.areaId,
+      requiereCambioPassword,
+    },
+    responseBody: {
+      id: user.id,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      email: user.email,
+      rol: user.rol,
+      areaId: user.areaId,
+      categoria: user.categoria,
+      requiereCambioPassword,
+    },
+    requiereCambioPassword,
+  };
+};
 
 const uploadDir = path.join(process.cwd(), "uploads", "notificaciones");
 const uploadDirEvidencias = path.join(process.cwd(), "uploads", "evidencias");
@@ -147,8 +185,10 @@ router.post("/login", verifyCaptcha, async (req, res) => {
     if (!passwordMatch)
       return res.status(401).json({ mensaje: "Contraseña incorrecta" });
 
+    const authData = await buildAuthPayload(user);
+
     const token = jwt.sign(
-      { id: user.id, email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol, areaId: user.areaId },
+      authData.tokenPayload,
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "1h" }
     );
@@ -156,15 +196,8 @@ router.post("/login", verifyCaptcha, async (req, res) => {
     res.json({
       mensaje: "Login exitoso",
       token,
-      usuario: {
-        id: user.id,
-        nombre: user.nombre,
-        apellido: user.apellido,
-        email: user.email,
-        rol: user.rol,
-        areaId: user.areaId,
-        categoria: user.categoria
-      }
+      requiereCambioPassword: authData.requiereCambioPassword,
+      usuario: authData.responseBody,
     });
   } catch (err) {
     console.error("Error en /login:", err);
@@ -390,7 +423,7 @@ router.post(
           filaEncabezados: headerRowIndex + 1,
         };
 
-        const passwordHash = await bcrypt.hash("ENI2024*", 10);
+        const passwordHash = await bcrypt.hash(TEMP_PASSWORD, 10);
 
         for (let index = 0; index < rows.length; index += 1) {
           const row = rows[index];
@@ -582,7 +615,14 @@ router.get("/", verifyToken, async (req, res) => {
       order: [["nombre", "ASC"], ["apellido", "ASC"]],
     });
 
-    return res.json(usuarios);
+    const usuariosConEstadoPassword = await Promise.all(
+      usuarios.map(async (usuario) => ({
+        ...usuario.toJSON(),
+        requiereCambioPassword: await hasTemporaryPassword(usuario),
+      }))
+    );
+
+    return res.json(usuariosConEstadoPassword);
   } catch (error) {
     console.error("Error al listar usuarios:", error);
     return res.status(500).json({ mensaje: "Error al obtener usuarios", error: error.message });
@@ -618,6 +658,12 @@ router.post("/cambiar-password", verifyToken, async (req, res) => {
     if (nuevaPassword.length < 6) {
       return res.status(400).json({
         mensaje: "La contraseña debe tener al menos 6 caracteres"
+      });
+    }
+
+    if (nuevaPassword === TEMP_PASSWORD) {
+      return res.status(400).json({
+        mensaje: "La nueva contraseña no puede ser la contraseña temporal predeterminada"
       });
     }
 
@@ -662,8 +708,22 @@ router.post("/cambiar-password", verifyToken, async (req, res) => {
 
     await usuario.update({ password: passwordHash });
 
+    if (!esMismoUsuario) {
+      return res.status(200).json({
+        mensaje: "Contraseña actualizada correctamente"
+      });
+    }
+
+    const authData = await buildAuthPayload(usuario);
+    const token = jwt.sign(authData.tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+    });
+
     res.status(200).json({
-      mensaje: "Contraseña actualizada correctamente"
+      mensaje: "Contraseña actualizada correctamente",
+      token,
+      requiereCambioPassword: authData.requiereCambioPassword,
+      usuario: authData.responseBody,
     });
   } catch (error) {
     console.error("Error en cambiar-password:", error);

@@ -14,9 +14,9 @@ import VerificarMisCursos from "./VerificarMisCursos";
 import EnviarNotificacionPorArea from "./notificaciones";
 import MisNotificaciones from "./MisNotificaciones";
 import SubirEvidencias from "./SubirEvidencias";
-import Reportes from "./Reportes";
 import Configuracion from "./Configuracion";
 import Monitoria from "./Monitoria";
+import DetallesFormador from "./DetallesFormador";
 import BulkUpload from "./BulkUpload";
 import TourHelpButton from "./TourHelpButton";
 import "./css/global.css";
@@ -127,12 +127,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             </RutaProtegida>
           }
         />
-
         <Route
-          path="/reportes"
+          path="/detalles-formador/:formadorId"
           element={
             <RutaProtegida rolRequerido="Administrador">
-              <Reportes />
+              <DetallesFormador />
             </RutaProtegida>
           }
         />

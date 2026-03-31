@@ -3,6 +3,13 @@ import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import { Readable } from "stream";
+import {
+  readStoredTokens,
+  updateStoredTokens,
+  setStoredRefreshToken,
+  getStoredRefreshToken,
+  hasValidTokens,
+} from "./tokenManager.js";
 
 dotenv.config();
 
@@ -25,6 +32,9 @@ function sanitizeFolderName(value, fallback) {
 }
 
 function getOAuthEnv() {
+  // 📌 NOTA: Estos valores vienen del .env
+  // ✅ CAMBIAR: Solo GOOGLE_OAUTH_REFRESH_TOKEN al cambiar de cuenta
+  // ❌ NO cambiar: CLIENT_ID, CLIENT_SECRET, REDIRECT_URI (son globales)
   return {
     clientId: normalizeEnvValue(process.env.GOOGLE_OAUTH_CLIENT_ID),
     clientSecret: normalizeEnvValue(process.env.GOOGLE_OAUTH_CLIENT_SECRET),
@@ -63,9 +73,31 @@ function hasOAuthConfig() {
 }
 
 function createOAuthClient() {
+  // 📌 NOTA: Estos valores vienen del .env
+  // ✅ CAMBIAR: Solo GOOGLE_OAUTH_REFRESH_TOKEN al cambiar de cuenta
+  // ❌ NO cambiar: CLIENT_ID, CLIENT_SECRET, REDIRECT_URI (son globales)
   const { clientId, clientSecret, refreshToken, redirectUri } = getOAuthEnv();
 
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  
+  // 🔄 AUTO-REFRESCO: Usar tokens almacenados si son válidos y del mismo refresh token
+  const storedData = readStoredTokens();
+  const storedRefreshToken = getStoredRefreshToken();
+  
+  // Detectar cambio de cuenta (cambio de refresh token en .env)
+  if (refreshToken !== storedRefreshToken) {
+    console.log("🔄 Cambio de cuenta detectado - usando nuevo refresh token");
+    setStoredRefreshToken(refreshToken);
+  }
+
+  // Si tenemos tokens guardados y son válidos, usarlos (evita llamadas innecesarias a Google)
+  if (hasValidTokens() && storedData.tokens && storedData.tokens.access_token) {
+    oauth2Client.setCredentials(storedData.tokens);
+    console.log("♻️ Reutilizando access token almacenado (válido)");
+    return oauth2Client;
+  }
+
+  // Si no, usar refresh token para obtener uno nuevo
   oauth2Client.setCredentials({
     refresh_token: refreshToken,
   });
@@ -85,7 +117,20 @@ async function createDriveClient() {
   if (hasOAuthConfig()) {
     try {
       const oauth2Client = createOAuthClient();
-      await oauth2Client.getAccessToken();
+      
+      // 🔄 AUTO-REFRESCO: Obtener nuevo access token si es necesario
+      const tokens = await oauth2Client.getAccessToken();
+      
+      // 💾 GUARDAR AUTOMÁTICAMENTE: Almacenar tokens para reutilización
+      if (tokens && tokens.token) {
+        updateStoredTokens({
+          access_token: tokens.token,
+          expiry_date: oauth2Client.credentials.expiry_date,
+          token_type: oauth2Client.credentials.token_type,
+          refresh_token: oauth2Client.credentials.refresh_token,
+        });
+        console.log("💾 Access token almacenado para reutilización");
+      }
 
       console.log("✅ Usando OAuth2 para Google Drive");
       return google.drive({ version: "v3", auth: oauth2Client });

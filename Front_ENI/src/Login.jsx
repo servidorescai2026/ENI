@@ -13,7 +13,9 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value.trim() });
+    const { name, value } = e.target;
+    // NO hacer trim() en la contraseña para permitir espacios si el usuario los necesita
+    setFormData({ ...formData, [name]: name === "password" ? value : value.trim() });
   };
 
   const handleCaptchaChange = (token) => {
@@ -94,9 +96,9 @@ export default function Login() {
         <h2>Iniciar Sesión</h2>
 
         <input
-          type="email"
+          type="text"
           name="email"
-          placeholder="Correo electrónico"
+          placeholder="Correo electrónico SENA"
           value={formData.email}
           onChange={handleChange}
           required
@@ -105,7 +107,7 @@ export default function Login() {
         <input
           type="password"
           name="password"
-          placeholder="Contraseña"
+          placeholder="Número de documento (Cédula)"
           value={formData.password}
           onChange={handleChange}
           required

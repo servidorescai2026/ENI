@@ -24,15 +24,13 @@ const TEMP_PASSWORD = "ENI2024*";
 const isBcryptHash = (value = "") => value.startsWith("$2a$") || value.startsWith("$2b$");
 
 const hasTemporaryPassword = async (user) => {
-  if (!user?.password) return false;
-  if (isBcryptHash(user.password)) {
-    return bcrypt.compare(TEMP_PASSWORD, user.password);
-  }
-  return user.password === TEMP_PASSWORD;
+  // Ahora siempre retorna false porque la contraseña debe ser el documento
+  return false;
 };
 
-const buildAuthPayload = async (user) => {
-  const requiereCambioPassword = await hasTemporaryPassword(user);
+const buildAuthPayload = async (user, forzarCambioPassword = false) => {
+  // Si forzarCambioPassword es true, siempre requiere cambio
+  const requiereCambioPassword = forzarCambioPassword || await hasTemporaryPassword(user);
 
   return {
     tokenPayload: {
@@ -169,24 +167,59 @@ router.post("/login", verifyCaptcha, async (req, res) => {
     console.log("BODY LOGIN:", req.body);
     const { email, password } = req.body;
     if (!email || !password)
-      return res.status(400).json({ mensaje: "Email y contraseña son requeridos" });
+      return res.status(400).json({ mensaje: "Correo y contraseña son requeridos" });
 
-    const user = await Usuario.findOne({ where: { email } });
+    // Buscar usuario por correo electrónico O por documento
+    const user = await Usuario.findOne({
+      attributes: ['id', 'documento', 'email', 'password', 'nombre', 'apellido', 'rol', 'areaId'],
+      where: {
+        [Op.or]: [
+          { email: email.toLowerCase().trim() },
+          { documento: email.trim() }
+        ]
+      }
+    });
     if (!user) return res.status(401).json({ mensaje: "Usuario no encontrado" });
-    // Verificar contraseña 
-    let passwordMatch = false;
-    if (user.password.startsWith("$2a$") || user.password.startsWith("$2b$")) {
-      // Contraseña hasheada con bcrypt
-      passwordMatch = await bcrypt.compare(password, user.password);
+
+    // Debug: mostrar documento del usuario y password ingresada
+    console.log("Usuario encontrado:", user.email);
+    console.log("Documento del usuario:", user.documento);
+    console.log("Password ingresada:", password);
+
+    // Verificar contraseña: debe coincidir con el documento del usuario
+    // NO hacer trim() en la contraseña para mantener exactitud
+    const documentoUsuario = (user.documento || "").trim();
+    const passwordIngresada = password; // Mantener la contraseña sin trim
+    const passwordMatch = documentoUsuario !== "" && passwordIngresada === documentoUsuario;
+
+    // Si no coincide con el documento, verificar contra la password guardada (para usuarios legacy)
+    if (!passwordMatch) {
+      if (user.password.startsWith("$2a$") || user.password.startsWith("$2b$")) {
+        // Contraseña hasheada con bcrypt - comparar sin trim
+        const matchLegacy = await bcrypt.compare(password, user.password);
+        if (!matchLegacy) {
+          console.log("Password match (legacy):", false);
+          return res.status(401).json({ mensaje: "Contraseña incorrecta" });
+        }
+        console.log("Password match (legacy):", true);
+      } else {
+        // Contraseña en texto plano - comparar sin trim
+        const matchLegacy = password === user.password;
+        if (!matchLegacy) {
+          console.log("Password match (legacy):", false);
+          return res.status(401).json({ mensaje: "Contraseña incorrecta" });
+        }
+        console.log("Password match (legacy):", true);
+      }
     } else {
-      // Contraseña en texto plano 
-      passwordMatch = password === user.password;
+      console.log("Password match (documento):", true);
     }
 
-    if (!passwordMatch)
-      return res.status(401).json({ mensaje: "Contraseña incorrecta" });
+    // Determinar si requiere cambio de contraseña
+    // Si la contraseña coincidió con el documento, obligar al cambio
+    const requiereCambioPassword = passwordMatch;
 
-    const authData = await buildAuthPayload(user);
+    const authData = await buildAuthPayload(user, requiereCambioPassword);
 
     const token = jwt.sign(
       authData.tokenPayload,
@@ -662,12 +695,7 @@ router.post("/cambiar-password", verifyToken, async (req, res) => {
       });
     }
 
-    if (nuevaPassword === TEMP_PASSWORD) {
-      return res.status(400).json({
-        mensaje: "La nueva contraseña no puede ser la contraseña temporal predeterminada"
-      });
-    }
-
+    // Ya no se bloquea TEMP_PASSWORD porque ya no se usa
     const usuario = userId
       ? await Usuario.findByPk(userId)
       : await Usuario.findOne({ where: { email } });
@@ -694,9 +722,20 @@ router.post("/cambiar-password", verifyToken, async (req, res) => {
         });
       }
 
-      const passwordValida = usuario.password.startsWith("$2a$") || usuario.password.startsWith("$2b$")
-        ? await bcrypt.compare(passwordActual, usuario.password)
-        : passwordActual === usuario.password;
+      // Verificar contraseña actual: puede ser el documento o la contraseña guardada
+      const documentoUsuario = usuario.documento || "";
+      const passwordEsDocumento = passwordActual.trim() === documentoUsuario.trim();
+      
+      let passwordValida = false;
+      if (passwordEsDocumento) {
+        // Si ingresa su documento, es válido
+        passwordValida = true;
+      } else if (usuario.password.startsWith("$2a$") || usuario.password.startsWith("$2b$")) {
+        // O verifica contra la contraseña hasheada existente
+        passwordValida = await bcrypt.compare(passwordActual, usuario.password);
+      } else {
+        passwordValida = passwordActual === usuario.password;
+      }
 
       if (!passwordValida) {
         return res.status(401).json({

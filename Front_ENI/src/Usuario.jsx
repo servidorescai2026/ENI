@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiUrl } from "./config/api";
 import GetAllCourses from "./services/Cursos/GetAllCourses";
@@ -12,6 +12,40 @@ export default function Usuario() {
   const [misInscripciones, setMisInscripciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
+  const [toastAprobacion, setToastAprobacion] = useState("");
+  const toastTimeoutRef = useRef(null);
+
+  const mostrarPopupAprobacion = (notificaciones = []) => {
+    const usuarioData = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const usuarioId = usuarioData?.id;
+    if (!usuarioId) return;
+
+    const key = `lastApprovalPopupNotifId_${usuarioId}`;
+    const lastShownId = Number(localStorage.getItem(key) || 0);
+
+    const aprobaciones = notificaciones
+      .filter((n) => !n.leida)
+      .filter((n) => {
+        const asunto = String(n.asunto || "").toLowerCase();
+        const mensaje = String(n.mensaje || "").toLowerCase();
+        return asunto.includes("evidencia aprobada") || (mensaje.includes("evidencia") && mensaje.includes("aprobada"));
+      })
+      .sort((a, b) => Number(a.id) - Number(b.id));
+
+    const nuevas = aprobaciones.filter((n) => Number(n.id) > lastShownId);
+    if (nuevas.length === 0) return;
+
+    const ultima = nuevas[nuevas.length - 1];
+    setToastAprobacion("Su evidencia a sido aprobada por el administrador");
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastAprobacion("");
+      toastTimeoutRef.current = null;
+    }, 4500);
+    localStorage.setItem(key, String(ultima.id));
+  };
 
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
@@ -36,8 +70,10 @@ export default function Usuario() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        const noLeidas = (data.notificaciones || []).filter(n => !n.leida).length;
+        const notificaciones = data.notificaciones || [];
+        const noLeidas = notificaciones.filter(n => !n.leida).length;
         setNotificacionesNoLeidas(noLeidas);
+        mostrarPopupAprobacion(notificaciones);
       } catch (error) {
         console.error("Error al cargar notificaciones:", error);
       }
@@ -47,6 +83,14 @@ export default function Usuario() {
     // Actualizar cada 30 segundos
     const interval = setInterval(cargarNotificacionesNoLeidas, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Función para formatear el contador
@@ -108,6 +152,26 @@ export default function Usuario() {
 
   return (
     <div className="usuario-container">
+      {toastAprobacion && (
+        <div className="toast-aprobacion-evidencia" role="status" aria-live="polite">
+          <span className="toast-aprobacion-icon">✅</span>
+          <span>{toastAprobacion}</span>
+          <button
+            type="button"
+            className="toast-aprobacion-close"
+            aria-label="Cerrar notificación"
+            onClick={() => {
+              setToastAprobacion("");
+              if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+                toastTimeoutRef.current = null;
+              }
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <header className="usuario-header">
         <h2>Bienvenido, {usuario.nombre}, {usuario.rol} 🤖</h2>
 

@@ -8,6 +8,7 @@ import { InscripcionCapacitacion } from "../database/models/inscripciones_capaci
 import verifyToken from "../middleware/verifyToken.js";
 import verifyCaptcha from "../middleware/verifyCaptcha.js";
 import { Notificacion } from "../database/models/notificacion.js";
+import { Archivo } from "../database/models/archivos.js";
 import multer from "multer";
 import xlsx from "xlsx";
 import fs from "fs";
@@ -903,17 +904,34 @@ router.post("/subir-evidencia", verifyToken, uploadEvidencias.array("archivos", 
       );
     }
 
+    // Registrar cada evidencia en la tabla de archivos para su posterior revisión en Monitoría.
+    const archivosDbPayload = archivosSubidos.map((file, index) => ({
+      usuarioId: req.usuario.id,
+      nombre: file.originalname,
+      ruta: enlacesArchivos[index] || `uploads/evidencias/${file.originalname}`,
+      tipo: file.mimetype || "application/pdf",
+      tamaño: file.size || null,
+      descripcion: descripcion || null,
+      estado: "pendiente",
+      fechaCarga: new Date(),
+    }));
+
+    await Archivo.bulkCreate(archivosDbPayload);
+
+    const notificacionArchivosPayload = {
+      sourceUserId: req.usuario.id,
+      sourceUserName: nombreUsuario,
+      folderLink: evidenciasLink || null,
+      files: enlacesArchivos,
+    };
+
     await Notificacion.bulkCreate(
       admins.map((admin) => ({
         usuarioId: admin.id,
         areaId: null,
         asunto,
         mensaje,
-        archivos: JSON.stringify(
-          evidenciasLink
-            ? { folderLink: evidenciasLink, files: enlacesArchivos }
-            : enlacesArchivos
-        ),
+        archivos: JSON.stringify(notificacionArchivosPayload),
       }))
     );
 
@@ -950,12 +968,75 @@ router.post("/notificaciones/:id/marcar-leida", verifyToken, async (req, res) =>
 
     await notif.update({ leida: 1 });
 
+    // Si la notificación corresponde a evidencias y quien la lee es admin,
+    // marcar dichas evidencias como aprobadas para dejar al día al formador.
+    if (req.usuario.rol === "Administrador") {
+      let payload = null;
+      try {
+        payload = notif.archivos ? JSON.parse(notif.archivos) : null;
+      } catch (e) {
+        payload = null;
+      }
+
+      const sourceUserId = Number(payload?.sourceUserId);
+      const files = Array.isArray(payload?.files) ? payload.files.filter(Boolean) : [];
+
+      if (Number.isInteger(sourceUserId) && sourceUserId > 0) {
+        const where = {
+          usuarioId: sourceUserId,
+          estado: "pendiente",
+        };
+
+        if (files.length > 0) {
+          where.ruta = { [Op.in]: files };
+        }
+
+        await Archivo.update(
+          { estado: "aprobado" },
+          { where }
+        );
+
+        // Notificar al formador que su evidencia fue aprobada por el administrador.
+        await Notificacion.create({
+          usuarioId: sourceUserId,
+          areaId: null,
+          asunto: "✅ Evidencia aprobada",
+          mensaje: "Su evidencia a sido aprobada por el administrador",
+          leida: 0,
+          creadaEn: new Date(),
+        });
+      }
+    }
+
     res.json({ mensaje: "Notificación marcada como leída" });
   } catch (err) {
     console.error("Error al marcar notificación como leída:", err);
     res
       .status(500)
       .json({ mensaje: "Error al actualizar notificación" });
+  }
+});
+
+// Eliminar una notificación del usuario autenticado
+router.delete("/notificaciones/:id", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const totalEliminadas = await Notificacion.destroy({
+      where: {
+        id,
+        usuarioId: req.usuario.id,
+      },
+    });
+
+    if (!totalEliminadas) {
+      return res.status(404).json({ mensaje: "Notificación no encontrada" });
+    }
+
+    res.json({ mensaje: "Notificación eliminada correctamente" });
+  } catch (err) {
+    console.error("Error al eliminar notificación:", err);
+    res.status(500).json({ mensaje: "Error al eliminar notificación" });
   }
 });
 

@@ -99,10 +99,27 @@ export default function Monitoria() {
         return fechaEvidencia >= primerDiaMes;
       });
 
-      // Determinar el estado del formador
+      // Contar estados de evidencias
+      const evidenciasPendientes = evidenciasFormador.filter(e => e.estado === 'pendiente').length;
+      const evidenciasRechazadas = evidenciasFormador.filter(e => e.estado === 'rechazado').length;
       const tieneEvidenciasEsteMes = evidenciasEsteMes.length > 0;
-      const tieneEvidenciasPendientes = evidenciasFormador.some(e => e.estado === 'pendiente');
-      const tieneEvidenciasRechazadas = evidenciasFormador.some(e => e.estado === 'rechazado');
+
+      // Determinar el estado del formador con nueva lógica
+      let estado = 'al-dia';
+      let tieneEvidenciasPendientes = false;
+      let tieneEvidenciasRechazadas = false;
+
+      if (evidenciasPendientes > 0) {
+        estado = 'pendiente-revision';
+        tieneEvidenciasPendientes = true;
+      } else if (evidenciasRechazadas > 0) {
+        estado = 'rechazado';
+        tieneEvidenciasRechazadas = true;
+      } else if (!tieneEvidenciasEsteMes) {
+        estado = 'pendiente';
+      } else {
+        estado = 'al-dia';
+      }
 
       // Calcular días sin subir evidencias
       let diasSinEvidencia = null;
@@ -115,14 +132,14 @@ export default function Monitoria() {
         cursos: cursosFormador,
         totalEvidencias: evidenciasFormador.length,
         evidenciasEsteMes: evidenciasEsteMes.length,
-        evidenciasPendientes: evidenciasFormador.filter(e => e.estado === 'pendiente').length,
+        evidenciasPendientes: evidenciasPendientes,
         evidenciasAprobadas: evidenciasFormador.filter(e => e.estado === 'aprobado').length,
-        evidenciasRechazadas: evidenciasFormador.filter(e => e.estado === 'rechazado').length,
+        evidenciasRechazadas: evidenciasRechazadas,
         tieneEvidenciasEsteMes,
         tieneEvidenciasPendientes,
         tieneEvidenciasRechazadas,
         diasSinEvidencia,
-        estado: tieneEvidenciasEsteMes ? 'al-dia' : 'pendiente'
+        estado: estado
       });
     });
 
@@ -131,8 +148,9 @@ export default function Monitoria() {
 
   const formadoresFiltrados = formadoresSinEvidencias.filter(f => {
     if (filtro === "todos") return true;
-    if (filtro === "pendientes") return f.estado === 'pendiente' || f.tieneEvidenciasPendientes || f.tieneEvidenciasRechazadas;
     if (filtro === "al-dia") return f.estado === 'al-dia';
+    if (filtro === "pendiente-revision") return f.estado === 'pendiente-revision';
+    if (filtro === "pendientes") return f.estado === 'pendiente' || f.estado === 'rechazado';
     if (filtro === "con-evidencia") return f.totalEvidencias > 0;
     return true;
   });
@@ -170,16 +188,22 @@ export default function Monitoria() {
           Todos ({formadoresSinEvidencias.length})
         </button>
         <button 
-          className={`filtro-btn pendiente ${filtro === "pendientes" ? "activo" : ""}`}
-          onClick={() => setFiltro("pendientes")}
-        >
-          ⚠️ Pendientes ({formadoresSinEvidencias.filter(f => f.estado === 'pendiente' || f.tieneEvidenciasPendientes).length})
-        </button>
-        <button 
           className={`filtro-btn ok ${filtro === "al-dia" ? "activo" : ""}`}
           onClick={() => setFiltro("al-dia")}
         >
           ✅ Al día ({formadoresSinEvidencias.filter(f => f.estado === 'al-dia').length})
+        </button>
+        <button 
+          className={`filtro-btn revision ${filtro === "pendiente-revision" ? "activo" : ""}`}
+          onClick={() => setFiltro("pendiente-revision")}
+        >
+          🔍 Pendiente por revisión ({formadoresSinEvidencias.filter(f => f.estado === 'pendiente-revision').length})
+        </button>
+        <button 
+          className={`filtro-btn pendiente ${filtro === "pendientes" ? "activo" : ""}`}
+          onClick={() => setFiltro("pendientes")}
+        >
+          ⚠️ Pendientes ({formadoresSinEvidencias.filter(f => f.estado === 'pendiente' || f.estado === 'rechazado').length})
         </button>
       </div>
 
@@ -197,7 +221,7 @@ export default function Monitoria() {
             {formadoresFiltrados.map((formador) => (
               <div 
                 key={formador.id} 
-                className={`monitoria-card ${formador.estado === 'pendiente' ? 'card-pendiente' : 'card-ok'}`}
+                className={`monitoria-card ${formador.estado === 'pendiente' ? 'card-pendiente' : formador.estado === 'pendiente-revision' ? 'card-revision' : formador.estado === 'rechazado' ? 'card-rechazado' : 'card-ok'}`}
               >
                 <div className="card-header">
                   <div className="formador-avatar">
@@ -208,7 +232,10 @@ export default function Monitoria() {
                     <p className="formador-email">{formador.email}</p>
                   </div>
                   <span className={`estado-badge ${formador.estado}`}>
-                    {formador.estado === 'al-dia' ? '✅ Al día' : '⚠️ Pendiente'}
+                    {formador.estado === 'al-dia' && '✅ Al día'}
+                    {formador.estado === 'pendiente-revision' && '🔍 Pendiente por revisión'}
+                    {formador.estado === 'rechazado' && '❌ Rechazado'}
+                    {formador.estado === 'pendiente' && '⚠️ Pendiente'}
                   </span>
                 </div>
 
@@ -260,7 +287,7 @@ export default function Monitoria() {
                 <div className="card-footer">
                   <button 
                     className="btn-detalle"
-                    onClick={() => navigate(`/gestion-cursos`)}
+                    onClick={() => navigate(`/detalles-formador/${formador.id}`)}
                   >
                     Ver detalles
                   </button>
@@ -284,9 +311,15 @@ export default function Monitoria() {
             </span>
             <span className="stat-label">Al día</span>
           </div>
+          <div className="stat-item revision">
+            <span className="stat-number">
+              {formadoresSinEvidencias.filter(f => f.estado === 'pendiente-revision').length}
+            </span>
+            <span className="stat-label">Pendiente por revisión</span>
+          </div>
           <div className="stat-item pendiente">
             <span className="stat-number">
-              {formadoresSinEvidencias.filter(f => f.estado === 'pendiente').length}
+              {formadoresSinEvidencias.filter(f => f.estado === 'pendiente' || f.estado === 'rechazado').length}
             </span>
             <span className="stat-label">Pendientes</span>
           </div>

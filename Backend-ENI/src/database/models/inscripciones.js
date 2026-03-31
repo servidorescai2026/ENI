@@ -1,4 +1,4 @@
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 import { sequelize } from "../config.js";
 import { Usuario } from "./usuarios.js";
 import { Curso } from "./cursos.js";
@@ -48,6 +48,38 @@ export const Inscripcion = sequelize.define(
     ]
   }
 );
+
+async function validarUnSoloCursoActivo(inscripcion, options = {}) {
+  if (inscripcion.estado !== 'activo') return;
+
+  const where = {
+    usuario_id: inscripcion.usuario_id,
+    estado: 'activo',
+  };
+
+  if (inscripcion.id) {
+    where.id = { [Op.ne]: inscripcion.id };
+  }
+
+  const inscripcionActivaExistente = await Inscripcion.findOne({
+    where,
+    transaction: options.transaction,
+  });
+
+  if (inscripcionActivaExistente) {
+    const error = new Error('Solo puedes estar inscrito en un curso activo a la vez');
+    error.code = 'SINGLE_ACTIVE_ENROLLMENT';
+    throw error;
+  }
+}
+
+Inscripcion.addHook('beforeCreate', async (inscripcion, options) => {
+  await validarUnSoloCursoActivo(inscripcion, options);
+});
+
+Inscripcion.addHook('beforeUpdate', async (inscripcion, options) => {
+  await validarUnSoloCursoActivo(inscripcion, options);
+});
 
 // Definir relaciones
 Usuario.hasMany(Inscripcion, {

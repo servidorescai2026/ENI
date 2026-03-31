@@ -83,6 +83,34 @@ export default function MisNotificaciones() {
     }
   };
 
+  const eliminarNotificacion = async (id) => {
+    const confirmar = window.confirm(
+      "¿Deseas eliminar esta notificación?"
+    );
+
+    if (!confirmar) return;
+
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(apiUrl(`/api/usuarios/notificaciones/${id}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setEstado(`⚠️ ${data.mensaje || "No se pudo eliminar la notificación"}`);
+        return;
+      }
+
+      setNotificaciones((prev) => prev.filter((n) => n.id !== id));
+      setEstado("✅ Notificación eliminada");
+    } catch (e) {
+      console.error(e);
+      setEstado("⚠️ Error de conexión al eliminar la notificación");
+    }
+  };
+
   const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
   const esAdmin = usuario.rol === "Administrador";
 
@@ -244,6 +272,14 @@ export default function MisNotificaciones() {
 
                     </button>
                   )}
+
+                  <button
+                    className="notificacion-btn notificacion-btn-danger"
+                    type="button"
+                    onClick={() => eliminarNotificacion(n.id)}
+                  >
+                    Eliminar
+                  </button>
                 </li>
               );
             })}

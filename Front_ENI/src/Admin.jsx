@@ -163,14 +163,6 @@ export default function Administrador() {
             <div className="card-hover-indicator">→</div>
           </button>
 
-          {/* Botón de Reportes */}
-          <button className="dashboard-card clickable-card" onClick={irAReportes}>
-            <div className="card-icon icon-presencial"></div>
-            <h4>Reportes</h4>
-            <p>Genera reportes y estadísticas</p>
-            <div className="card-hover-indicator">→</div>
-          </button>
-
           {/* Botón de Monitoría */}
           <button className="dashboard-card clickable-card" onClick={irAMonitoria}>
             <div className="card-icon icon-idiomas"></div>

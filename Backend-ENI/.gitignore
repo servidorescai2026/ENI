@@ -1,0 +1,25 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 🔐 Tokens y credenciales
+.oauth-tokens.json
+credenciales.json
+aesthetic-joy-487901-t3-b468e2860d9c.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Uploads locales
+uploads/

@@ -4121,6 +4121,10 @@ footer a:hover {
   background: linear-gradient(135deg, #2196f3, #1976d2);
 }
 
+.filtro-btn.nuevo.activo {
+  background: linear-gradient(135deg, #26a69a, #00897b);
+}
+
 .monitoria-main {
   flex: 1;
   padding: 1rem 2rem 2rem;

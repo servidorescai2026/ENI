@@ -33,7 +33,10 @@ async function EnrollCourse(courseId) {
             } catch (e) {
                 errorData = { error: `Error desconocido del servidor ${e}` };
             }
-            throw new Error(errorData.error || `HTTP ${response.status}`);
+            const error = new Error(errorData.error || `HTTP ${response.status}`);
+            error.code = errorData.code || null;
+            error.status = response.status;
+            throw error;
         }
 
         const data = await response.json();

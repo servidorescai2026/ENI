@@ -7,7 +7,7 @@ export default function Monitoria() {
   const [usuario, setUsuario] = useState(null);
   const [formadoresSinEvidencias, setFormadoresSinEvidencias] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [filtro, setFiltro] = useState("todos"); // todos, pendientes, con-evidencia
+  const [filtro, setFiltro] = useState("todos"); // todos, al-dia, pendiente-revision, pendientes, con-evidencia
 
   const normalizarLista = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -63,15 +63,29 @@ export default function Monitoria() {
         throw new Error(dataEvidencias?.message || "No se pudieron cargar las evidencias");
       }
 
+      // Cargar inscripciones regulares (con fallback si no existe el endpoint)
+      let dataInscripciones = { data: [] };
+      try {
+        const resInscripciones = await fetch(apiUrl("/api/inscripciones"), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (resInscripciones.ok) {
+          dataInscripciones = await resInscripciones.json();
+        }
+      } catch (e) {
+        console.log("Inscripciones regulares no disponibles");
+      }
+
       const usuariosList = normalizarLista(dataUsuarios);
       const cursosList = normalizarLista(dataCursos);
       const evidenciasList = normalizarLista(dataEvidencias);
+      const inscripcionesList = normalizarLista(dataInscripciones);
 
       // Filtrar solo formadores
       const formadoresList = usuariosList.filter(u => u.rol === "Formador");
 
       // Procesar formadores sin evidencias
-      procesarFormadoresSinEvidencias(formadoresList, cursosList, evidenciasList);
+      procesarFormadoresSinEvidencias(formadoresList, cursosList, evidenciasList, inscripcionesList);
     } catch (error) {
       console.error("Error al cargar datos:", error);
       setFormadoresSinEvidencias([]);
@@ -80,9 +94,21 @@ export default function Monitoria() {
     }
   };
 
-  const procesarFormadoresSinEvidencias = (formadoresList, cursosList, evidenciasList) => {
+  const procesarFormadoresSinEvidencias = (formadoresList, cursosList, evidenciasList, inscripcionesList = []) => {
     const fechaActual = new Date();
+    fechaActual.setHours(0, 0, 0, 0);
     const primerDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+    
+    const parseDateOnlyAsLocal = (value) => {
+      if (!value) return null;
+      const raw = String(value).trim().slice(0, 10);
+      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+        const [, y, m, d] = match;
+        return new Date(Number(y), Number(m) - 1, Number(d), 0, 0, 0);
+      }
+      return null;
+    };
     
     const formadoresConProblemas = [];
 
@@ -92,6 +118,49 @@ export default function Monitoria() {
       
       // Obtener evidencias del formador
       const evidenciasFormador = evidenciasList.filter(e => e.usuarioId === formador.id);
+
+      // Obtener inscripciones regulares del formador
+      const inscripcionesRegularesFormador = inscripcionesList.filter((i) => {
+        const usuarioId = i.usuarioId || i.usuario_id || (i.usuario?.id);
+        return Number(usuarioId) === Number(formador.id);
+      });
+      const inscripcionesRegularesActivas = inscripcionesRegularesFormador.filter((i) => {
+        const estado = String(i.estado || "").toLowerCase();
+        return estado === "" || estado === "activo";
+      });
+
+      // Recopilar todas las fechas de fin de cursos
+      const fechasFinCursos = [];
+
+      // Fechas de cursos regulares
+      inscripcionesRegularesActivas.forEach(insc => {
+        const cursoId = insc.cursoId || insc.curso_id || (insc.curso?.id);
+        const cursoReg = cursosList.find(c => Number(c.id) === Number(cursoId));
+        if (cursoReg && cursoReg.fechaFin) {
+          const fechaFin = parseDateOnlyAsLocal(cursoReg.fechaFin);
+          if (fechaFin && !Number.isNaN(fechaFin.getTime())) {
+            fechasFinCursos.push(fechaFin);
+          }
+        }
+      });
+
+      // Solo cuentan cursos creados en Gestión de cursos (inscripciones regulares activas)
+      const cursosAsignados = inscripcionesRegularesActivas.length;
+      const tieneCursoAsignado = cursosAsignados > 0;
+      const tieneCursoFinalizado = fechasFinCursos.some(fecha => fecha <= fechaActual);
+      const fechaFinMasReciente = fechasFinCursos.length > 0
+        ? new Date(Math.max(...fechasFinCursos.map(f => f.getTime())))
+        : null;
+      
+      // Verificar si tiene evidencias DESPUÉS de la fecha de fin del curso
+      let evidenciasDesFechaFin = [];
+      if (fechaFinMasReciente) {
+        evidenciasDesFechaFin = evidenciasFormador.filter(e => {
+          const fechaEvidencia = parseDateOnlyAsLocal(e.fechaCarga);
+          if (!fechaEvidencia) return false;
+          return fechaEvidencia >= fechaFinMasReciente;
+        });
+      }
       
       // Verificar si tiene evidencias este mes
       const evidenciasEsteMes = evidenciasFormador.filter(e => {
@@ -109,33 +178,47 @@ export default function Monitoria() {
       let tieneEvidenciasPendientes = false;
       let tieneEvidenciasRechazadas = false;
 
-      if (evidenciasPendientes > 0) {
+      // PRIORIDAD 1: Si no tiene ningún curso asignado → AL DÍA
+      if (!tieneCursoAsignado) {
+        estado = 'al-dia';
+      } 
+      // PRIORIDAD 2: Evidencias en revisión
+      else if (evidenciasPendientes > 0) {
         estado = 'pendiente-revision';
         tieneEvidenciasPendientes = true;
-      } else if (evidenciasRechazadas > 0) {
+      } 
+      // PRIORIDAD 3: Evidencias rechazadas
+      else if (evidenciasRechazadas > 0) {
         estado = 'rechazado';
         tieneEvidenciasRechazadas = true;
-      } else if (!tieneEvidenciasEsteMes) {
+      } 
+      // PRIORIDAD 4: Curso finalizado sin evidencias
+      else if (tieneCursoFinalizado && evidenciasDesFechaFin.length === 0 && fechaFinMasReciente) {
         estado = 'pendiente';
-      } else {
+      } 
+      // DEFAULT: Al día
+      else {
         estado = 'al-dia';
       }
 
-      // Calcular días sin subir evidencias
+      // Calcular días sin subir evidencias (desde la fecha de fin del curso)
       let diasSinEvidencia = null;
-      if (!tieneEvidenciasEsteMes) {
-        diasSinEvidencia = Math.floor((fechaActual - primerDiaMes) / (1000 * 60 * 60 * 24));
+      if (tieneCursoAsignado && tieneCursoFinalizado && evidenciasDesFechaFin.length === 0 && fechaFinMasReciente) {
+        diasSinEvidencia = Math.floor((fechaActual - fechaFinMasReciente) / (1000 * 60 * 60 * 24));
       }
 
       formadoresConProblemas.push({
         ...formador,
         cursos: cursosFormador,
+        cursosAsignados,
         totalEvidencias: evidenciasFormador.length,
         evidenciasEsteMes: evidenciasEsteMes.length,
         evidenciasPendientes: evidenciasPendientes,
         evidenciasAprobadas: evidenciasFormador.filter(e => e.estado === 'aprobado').length,
         evidenciasRechazadas: evidenciasRechazadas,
         tieneEvidenciasEsteMes,
+        tieneCursoAsignado,
+        tieneCursoFinalizado,
         tieneEvidenciasPendientes,
         tieneEvidenciasRechazadas,
         diasSinEvidencia,
@@ -150,7 +233,7 @@ export default function Monitoria() {
     if (filtro === "todos") return true;
     if (filtro === "al-dia") return f.estado === 'al-dia';
     if (filtro === "pendiente-revision") return f.estado === 'pendiente-revision';
-    if (filtro === "pendientes") return f.estado === 'pendiente' || f.estado === 'rechazado';
+    if (filtro === "pendientes") return (f.estado === 'pendiente' || f.estado === 'rechazado') && (Number(f.cursosAsignados || 0) > 0);
     if (filtro === "con-evidencia") return f.totalEvidencias > 0;
     return true;
   });
@@ -247,7 +330,7 @@ export default function Monitoria() {
 
                   <div className="info-row">
                     <span className="label">📚 Cursos asignados:</span>
-                    <span className="value">{formador.cursos.length}</span>
+                    <span className="value">{formador.cursosAsignados ?? 0}</span>
                   </div>
 
                   <div className="info-row">

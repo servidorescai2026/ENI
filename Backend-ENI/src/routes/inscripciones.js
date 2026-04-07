@@ -3,6 +3,7 @@ import { Inscripcion } from "../database/models/inscripciones.js";
 import { Curso } from "../database/models/cursos.js";
 import { Usuario } from "../database/models/usuarios.js";
 import { sequelize } from "../database/config.js";
+import { Op } from "sequelize";
 import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
@@ -35,6 +36,32 @@ router.post("/", verifyToken, async (req, res) => {
         "SELECT id FROM usuarios WHERE id = ? FOR UPDATE",
         { replacements: [usuario_id], transaction }
       );
+
+      // 🔒 Validar periodo mínimo entre inscripciones (1 curso cada 6 meses)
+      const fechaLimite = new Date();
+      fechaLimite.setMonth(fechaLimite.getMonth() - 6);
+
+      const inscripcionReciente = await Inscripcion.findOne({
+        where: {
+          usuario_id,
+          fecha_inscripcion: {
+            [Op.gte]: fechaLimite,
+          },
+        },
+        order: [["fecha_inscripcion", "DESC"]],
+        transaction,
+      });
+
+      if (inscripcionReciente?.fecha_inscripcion) {
+        const fechaDisponible = new Date(inscripcionReciente.fecha_inscripcion);
+        fechaDisponible.setMonth(fechaDisponible.getMonth() + 6);
+
+        const error = new Error(
+          `Solo puedes inscribirte a un curso cada 6 meses. Podrás inscribirte nuevamente a partir del ${fechaDisponible.toLocaleDateString("es-CO")}`
+        );
+        error.code = "ENROLLMENT_COOLDOWN";
+        throw error;
+      }
 
       // 🔒 Validar fecha de cierre de inscripciones
       if (curso.fechaCierreInscripcion) {
@@ -136,6 +163,10 @@ router.post("/", verifyToken, async (req, res) => {
     }
 
     if (error?.code === "COURSE_FULL") {
+      return res.status(409).json({ error: error.message, code: error.code });
+    }
+
+    if (error?.code === "ENROLLMENT_COOLDOWN") {
       return res.status(409).json({ error: error.message, code: error.code });
     }
 
@@ -283,6 +314,44 @@ router.get("/curso/:cursoId", verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error("Error al obtener inscritos:", error);
+    res.status(500).json({
+      error: "Error interno del servidor",
+      code: "INTERNAL_ERROR"
+    });
+  }
+});
+
+// GET /api/inscripciones - Obtener todas las inscripciones
+router.get("/", verifyToken, async (req, res) => {
+  try {
+    const inscripciones = await Inscripcion.findAll({
+      include: [
+        { model: Usuario, as: 'usuario', attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"] },
+        { model: Curso, as: 'curso', attributes: ["id", "nombre", "fechaFin"] }
+      ],
+      order: [["fecha_inscripcion", "DESC"]]
+    });
+
+    // Normalizar los datos a formato camelCase para el frontend
+    const resultado = inscripciones.map(i => {
+      const inscripcionPlain = i.toJSON ? i.toJSON() : i;
+      return {
+        id: inscripcionPlain.id,
+        usuarioId: inscripcionPlain.usuario_id,
+        cursoId: inscripcionPlain.curso_id,
+        usuario: inscripcionPlain.usuario,
+        curso: inscripcionPlain.curso,
+        estado: inscripcionPlain.estado,
+        fecha_inscripcion: inscripcionPlain.fecha_inscripcion
+      };
+    });
+
+    res.json({
+      total: resultado.length,
+      data: resultado
+    });
+  } catch (error) {
+    console.error("Error al obtener inscripciones:", error);
     res.status(500).json({
       error: "Error interno del servidor",
       code: "INTERNAL_ERROR"

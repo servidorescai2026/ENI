@@ -35,6 +35,25 @@ export default function GestionCursos() {
     fechaCierreInscripcion: ""
   });
 
+  const parseDateOnlyAsLocal = (value) => {
+    if (!value) return null;
+
+    const raw = String(value).trim().slice(0, 10);
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const [, y, m, d] = match;
+      return new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatDateLocal = (value, locale = "es-ES") => {
+    const date = parseDateOnlyAsLocal(value);
+    return date ? date.toLocaleDateString(locale) : "N/A";
+  };
+
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
     const token = localStorage.getItem("token");
@@ -614,7 +633,7 @@ export default function GestionCursos() {
                           <span className="info-icon">📅</span>
                           <div>
                             <span className="info-label">Inicio</span>
-                            <span className="info-value">{new Date(curso.fechaInicio).toLocaleDateString("es-ES")}</span>
+                            <span className="info-value">{formatDateLocal(curso.fechaInicio, "es-ES")}</span>
                           </div>
                         </div>
                       )}
@@ -623,7 +642,7 @@ export default function GestionCursos() {
                           <span className="info-icon">🏁</span>
                           <div>
                             <span className="info-label">Fin</span>
-                            <span className="info-value">{new Date(curso.fechaFin).toLocaleDateString("es-ES")}</span>
+                            <span className="info-value">{formatDateLocal(curso.fechaFin, "es-ES")}</span>
                           </div>
                         </div>
                       )}
@@ -661,9 +680,9 @@ export default function GestionCursos() {
                     {curso.tipoLanzamiento && (
                       <div style={{ marginTop: '0.8rem' }}>
                         <span className={`lanzamiento-badge ${curso.tipoLanzamiento}`}>
-                          {curso.tipoLanzamiento === 'fecha' && `📆 Cierre: ${curso.fechaCierreInscripcion ? new Date(curso.fechaCierreInscripcion).toLocaleDateString("es-ES") : 'N/A'}`}
+                          {curso.tipoLanzamiento === 'fecha' && `📆 Cierre: ${curso.fechaCierreInscripcion ? formatDateLocal(curso.fechaCierreInscripcion, "es-ES") : 'N/A'}`}
                           {curso.tipoLanzamiento === 'cantidad' && `👥 Máx: ${curso.maxPersonas || 0} personas`}
-                          {curso.tipoLanzamiento === 'ambos' && `📆 Cierre: ${curso.fechaCierreInscripcion ? new Date(curso.fechaCierreInscripcion).toLocaleDateString("es-ES") : 'N/A'} | 👥 Máx: ${curso.maxPersonas || 0}`}
+                          {curso.tipoLanzamiento === 'ambos' && `📆 Cierre: ${curso.fechaCierreInscripcion ? formatDateLocal(curso.fechaCierreInscripcion, "es-ES") : 'N/A'} | 👥 Máx: ${curso.maxPersonas || 0}`}
                         </span>
                       </div>
                     )}

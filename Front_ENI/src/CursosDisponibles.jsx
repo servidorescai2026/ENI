@@ -8,6 +8,24 @@ import GetUserEnrollments from "./services/Inscripciones/GetUserEnrollments";
 import CancelEnrollment from "./services/Inscripciones/CancelEnrollment";
 
 export default function CursosDisponibles() {
+    const parseDateOnlyAsLocal = (value) => {
+      if (!value) return null;
+
+      const raw = String(value).trim().slice(0, 10);
+      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+        const [, y, m, d] = match;
+        return new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+      }
+
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const formatDateLocal = (value, locale = "es-ES") => {
+      const date = parseDateOnlyAsLocal(value);
+      return date ? date.toLocaleDateString(locale) : "N/A";
+    };
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(null);
   const [cursos, setCursos] = useState([]);
@@ -126,7 +144,12 @@ export default function CursosDisponibles() {
       await loadCursos(usuario); // Recargar cursos para actualizar contador
     } catch (error) {
       console.error("Error inscribiéndose al curso:", error);
-      const mensaje = error.message || "Error al inscribirse al curso. Inténtalo de nuevo.";
+      let mensaje = error.message || "Error al inscribirse al curso. Inténtalo de nuevo.";
+
+      if (error?.code === "ENROLLMENT_COOLDOWN") {
+        mensaje = `No puedes inscribirte todavía. ${error.message}`;
+      }
+
       alert(mensaje);
     } finally {
       setEnrolling(null);
@@ -205,7 +228,8 @@ export default function CursosDisponibles() {
               const puedeReinscribirse = enrollment && enrollment.estado !== "activo";
               const inscripcionesCerradas = curso.inscripcionesAbiertas === false;
               const cupoLleno = curso.maxPersonas && curso.inscritosActivos >= curso.maxPersonas;
-              const fechaPasada = curso.fechaCierreInscripcion && new Date(curso.fechaCierreInscripcion) < new Date();
+              const fechaCierre = parseDateOnlyAsLocal(curso.fechaCierreInscripcion);
+              const fechaPasada = fechaCierre && fechaCierre < new Date();
               return (
                 <div key={curso.id} className="curso-card">
                   <div className="curso-header">
@@ -229,7 +253,7 @@ export default function CursosDisponibles() {
                       )}
                       {curso.fechaCierreInscripcion && (
                         <span>
-                          <strong>📆 Cierre:</strong> {new Date(curso.fechaCierreInscripcion).toLocaleDateString('es-ES')}
+                          <strong>📆 Cierre:</strong> {formatDateLocal(curso.fechaCierreInscripcion, "es-ES")}
                           {fechaPasada && <span style={{color: 'red', marginLeft: '5px'}}>❗ Cerrado</span>}
                         </span>
                       )}

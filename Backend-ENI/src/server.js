@@ -7,8 +7,8 @@ import inscripcionRoutes from "./routes/inscripciones.js";
 import archivoRoutes from "./routes/archivos.js";
 import { conectarDB, sequelize } from "./database/config.js";
 import areaRoutes from "./routes/areas.js";
-import evidenciasRoutes from "./routes/evidencias.js";
 import inscripcionesCapacitacionRoutes from "./routes/inscripciones_capacitacion.js";
+import { configurarCronJobs } from "./services/cronJobs.js";
 
 dotenv.config();
 
@@ -30,28 +30,31 @@ app.use("/uploads", express.static("uploads")); // para que puedas ver las imág
 // Conectar a BD
 conectarDB();
 
+// Configurar tareas programadas (cron jobs)
+configurarCronJobs();
+
 // Sincronizar modelos y crear tabla de relación cursos_usuarios
-sequelize.sync().then(async () => {
-  console.log("🗂️ Modelos sincronizados con MySQL");
-  try {
-    await sequelize.query(`
-      CREATE TABLE IF NOT EXISTS cursos_usuarios (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        cursoId INT NOT NULL,
-        usuarioId INT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (cursoId) REFERENCES cursos(id) ON DELETE CASCADE,
-        FOREIGN KEY (usuarioId) REFERENCES usuarios(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_curso_usuario (cursoId, usuarioId),
-        INDEX idx_cursoId (cursoId),
-        INDEX idx_usuarioId (usuarioId)
-      );
-    `);
-    console.log('✅ Tabla cursos_usuarios creada/verificada');
-  } catch (err) {
-    console.error('Error creando/verificando tabla cursos_usuarios:', err);
-  }
-});
+// sequelize.sync().then(async () => {
+//   console.log("🗂️ Modelos sincronizados con MySQL");
+//   try {
+//     await sequelize.query(`
+//       CREATE TABLE IF NOT EXISTS cursos_usuarios (
+//         id INT PRIMARY KEY AUTO_INCREMENT,
+//         cursoId INT NOT NULL,
+//         usuarioId INT NOT NULL,
+//         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+//         FOREIGN KEY (cursoId) REFERENCES cursos(id) ON DELETE CASCADE,
+//         FOREIGN KEY (usuarioId) REFERENCES usuarios(id) ON DELETE CASCADE,
+//         UNIQUE KEY unique_curso_usuario (cursoId, usuarioId),
+//         INDEX idx_cursoId (cursoId),
+//         INDEX idx_usuarioId (usuarioId)
+//       );
+//     `);
+//     console.log('✅ Tabla cursos_usuarios creada/verificada');
+//   } catch (err) {
+//     console.error('Error creando/verificando tabla cursos_usuarios:', err);
+//   }
+// });
 // Rutas
 app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/areas", areaRoutes);
@@ -59,7 +62,6 @@ app.use("/api/cursos", cursoRoutes);
 app.use("/api/inscripciones", inscripcionRoutes);
 app.use("/api/inscripciones-capacitacion", inscripcionesCapacitacionRoutes);
 app.use("/api/archivos", archivoRoutes);
-app.use("/api/evidencias", evidenciasRoutes);
 app.get("/", (req, res) => {
   res.json({ mensaje: "API ENI lista 🚀 con MySQL" });
 });

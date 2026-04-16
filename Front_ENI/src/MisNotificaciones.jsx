@@ -130,21 +130,73 @@ export default function MisNotificaciones() {
     }
   };
 
-  const getArchivoUrl = (ruta) => {
-    if (typeof ruta !== "string" || !ruta) return "#";
-    if (ruta.startsWith("http://") || ruta.startsWith("https://")) {
-      if (ruta.includes("drive.google.com")) {
-        const matchByFile = ruta.match(/\/file\/d\/([^/]+)/);
-        const matchByIdParam = ruta.match(/[?&]id=([^&]+)/);
-        const fileId = matchByFile?.[1] || matchByIdParam?.[1];
+  const renderMensajeConEnlaces = (mensaje) => {
+    if (!mensaje) return "";
 
-        if (fileId) {
-          return `https://drive.google.com/file/d/${fileId}/view?usp=drive_link&v=${Date.now()}`;
-        }
+    // Regex para detectar URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const elementos = [];
+    let ultimoIndice = 0;
+    let match;
+
+    // Crear regex nuevamente para cada búsqueda
+    const regexParaBuscar = /(https?:\/\/[^\s]+)/g;
+
+    while ((match = regexParaBuscar.exec(mensaje)) !== null) {
+      // Agregar texto antes de la URL
+      if (match.index > ultimoIndice) {
+        const textoBefore = mensaje.substring(ultimoIndice, match.index);
+        elementos.push(
+          <React.Fragment key={`texto-${ultimoIndice}`}>
+            {textoBefore.split("\n").map((linea, idx) => (
+              <React.Fragment key={idx}>
+                {linea}
+                {idx < textoBefore.split("\n").length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </React.Fragment>
+        );
       }
-      return `${ruta}${ruta.includes("?") ? "&" : "?"}v=${Date.now()}`;
+
+      // Agregar la URL como enlace
+      elementos.push(
+        <a
+          key={`url-${match.index}`}
+          href={match[0]}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: "#0066cc",
+            textDecoration: "underline",
+            fontWeight: "bold",
+            wordBreak: "break-all",
+            display: "inline-block",
+            marginTop: "0.5rem",
+          }}
+        >
+          {match[0]}
+        </a>
+      );
+
+      ultimoIndice = regexParaBuscar.lastIndex;
     }
-    return uploadsUrl(`/${ruta.replace(/^\/+/, "")}`);
+
+    // Agregar texto restante
+    if (ultimoIndice < mensaje.length) {
+      const textoAfter = mensaje.substring(ultimoIndice);
+      elementos.push(
+        <React.Fragment key={`texto-final`}>
+          {textoAfter.split("\n").map((linea, idx) => (
+            <React.Fragment key={idx}>
+              {linea}
+              {idx < textoAfter.split("\n").length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </React.Fragment>
+      );
+    }
+
+    return elementos.length > 0 ? elementos : mensaje;
   };
 
   const obtenerFechaLocal = (fecha) => {
@@ -220,7 +272,7 @@ export default function MisNotificaciones() {
                 >
                   <div className="notificacion-content">
                     <strong className="notificacion-asunto">{n.asunto}</strong>
-                    <p className="notificacion-mensaje">{n.mensaje}</p>
+                    <p className="notificacion-mensaje">{renderMensajeConEnlaces(n.mensaje)}</p>
 
                     {esAdmin && folderLink && (
                       <ul className="notificacion-archivos-list">

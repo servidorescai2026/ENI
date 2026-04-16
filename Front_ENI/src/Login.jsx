@@ -9,6 +9,7 @@ export default function Login() {
   const [mensaje, setMensaje] = useState("");
   const [captchaToken, setCaptchaToken] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const recaptchaRef = useRef(null);
   const navigate = useNavigate();
 
@@ -104,14 +105,20 @@ export default function Login() {
           required
         />
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Número de documento (Cédula)"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
+        <div className="input-password">
+          <input
+            type={mostrarPassword ? "text" : "password"}
+            name="password"
+            placeholder="Número de documento (Cédula)"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            
+          />
+          <span onClick={() => setMostrarPassword(!mostrarPassword)}>
+            {mostrarPassword ? "🙉" : "🙈"}
+          </span>
+        </div>
 
         <div className="recaptcha-container">
           <ReCAPTCHA

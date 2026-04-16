@@ -79,6 +79,16 @@ export const Curso = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    notificacionTransferenciaEnviada: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: "Indica si ya se envió notificación de transferencia de conocimiento",
+    },
+    notificacionFaltaEvidenciaEnviada: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: "Indica si ya se notificó al admin sobre falta de evidencia a los 3 meses",
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

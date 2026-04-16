@@ -4,6 +4,7 @@ import { Curso } from "./cursos.js";
 import { Inscripcion } from "./inscripciones.js";
 import { Archivo } from "./archivos.js";
 import { InscripcionCapacitacion } from "./inscripciones_capacitacion.js";
+import { Reporte } from "./reportes.js";
 
 // --- RELACIÓN 1 (Área) a MUCHOS (Instructores/Usuarios) ---
 Area.hasMany(Usuario, { foreignKey: "areaId", as: "instructores" });
@@ -25,4 +26,8 @@ Archivo.belongsTo(Usuario, { foreignKey: "usuarioId", as: "usuario" });
 Usuario.hasMany(InscripcionCapacitacion, { foreignKey: "usuarioId", as: "inscripcionesCapacitacion" });
 InscripcionCapacitacion.belongsTo(Usuario, { foreignKey: "usuarioId", as: "usuario" });
 
-export { Usuario, Area, Curso, Inscripcion, Archivo, InscripcionCapacitacion };
+// --- RELACIÓN 1 (Usuario) a MUCHOS (Reportes) ---
+Usuario.hasMany(Reporte, { foreignKey: "usuarioId", as: "reportes" });
+Reporte.belongsTo(Usuario, { foreignKey: "usuarioId", as: "usuario" });
+
+export { Usuario, Area, Curso, Inscripcion, Archivo, InscripcionCapacitacion, Reporte };

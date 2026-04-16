@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { Usuario } from "../database/models/usuarios.js";
 import { Area } from "../database/models/area.js";
 import { InscripcionCapacitacion } from "../database/models/inscripciones_capacitacion.js";
+import { Reporte } from "../database/models/reportes.js";
 import verifyToken from "../middleware/verifyToken.js";
 import verifyCaptcha from "../middleware/verifyCaptcha.js";
 import { Notificacion } from "../database/models/notificacion.js";
@@ -15,7 +16,6 @@ import fs from "fs";
 import path from "path";
 import { Op } from "sequelize";
 import { sequelize } from "../database/config.js";
-import { uploadEvidenciasToDrive } from "../services/googleDrive.js";
 
 dotenv.config();
 const router = express.Router();
@@ -44,12 +44,17 @@ const buildAuthPayload = async (user, forzarCambioPassword = false) => {
     },
     responseBody: {
       id: user.id,
+      documento: user.documento,
       nombre: user.nombre,
       apellido: user.apellido,
       email: user.email,
       rol: user.rol,
       areaId: user.areaId,
-      categoria: user.categoria,
+      regionalId: user.regionalId,
+      regionalNor: user.regionalNombre,
+      centroForm: user.centroFormacionId,
+      centroNoml: user.centroNombre,
+
       requiereCambioPassword,
     },
     requiereCambioPassword,
@@ -69,7 +74,7 @@ if (!fs.existsSync(uploadDirEvidencias)) {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir); // 👈 usamos ruta absoluta ya comprobada
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -171,7 +176,20 @@ router.post("/login", verifyCaptcha, async (req, res) => {
 
     // Buscar usuario por correo electrónico O por documento
     const user = await Usuario.findOne({
-      attributes: ['id', 'documento', 'email', 'password', 'nombre', 'apellido', 'rol', 'areaId'],
+      attributes: [
+        'id',
+        'documento',
+        'email',
+        'password',
+        'nombre',
+        'apellido',
+        'rol',
+        'areaId',
+        'regionalId',
+        'regionalNombre',
+        'centroFormacionId',
+        'centroNombre'
+      ],
       where: {
         [Op.or]: [
           { email: email.toLowerCase().trim() },
@@ -325,7 +343,7 @@ router.post(
 
         const normalized = normalizeText(text);
         const acta = normalized.includes("sin acta") || normalized === "no"
-            ? "NO"
+          ? "NO"
           : normalized.includes("acta")
             ? "SI"
             : null;
@@ -403,17 +421,27 @@ router.post(
       const expectedHeaders = [
         "documento",
         "correo",
+        "correo sena",
         "email",
+        "nombre",
         "nombre instructor",
+        "red",
         "red de conocimiento",
+        "area",
         "area tematica",
-        "denominacion de la capacitacion",
       ];
 
       const headerRowIndex = matrix.findIndex((row) => {
         const normalizedCells = row.map((cell) => normalizeText(cell));
-        const matches = expectedHeaders.filter((header) => normalizedCells.includes(header)).length;
-        return matches >= 3;
+
+        return (
+          normalizedCells.includes("documento") &&
+          (
+            normalizedCells.includes("correo") ||
+            normalizedCells.includes("correo sena") ||
+            normalizedCells.includes("email")
+          )
+        );
       });
 
       if (headerRowIndex === -1) {
@@ -478,7 +506,7 @@ router.post(
           }
 
           let email = String(
-            getField(row, ["email", "Email", "CORREO", "correo", "Mail", "MAIL"]) || ""
+            getField(row, ["email", "Email", "CORREO", "correo", "Mail", "MAIL", "CORREO SENA"]) || ""
           ).trim().toLowerCase();
 
           if (!email && documento) {
@@ -486,10 +514,10 @@ router.post(
           }
 
           const redConocimiento = String(
-            getField(row, ["RED DE CONOCIMIENTO", "redConocimiento", "red_conocimiento"]) || ""
+            getField(row, ["RED DE CONOCIMIENTO", "redConocimiento", "red_conocimiento", "RED"]) || ""
           ).trim();
           const areaTematica = String(
-            getField(row, ["ÁREA TEMÁTICA", "AREA TEMATICA", "area_tematica", "areaTematica"]) || ""
+            getField(row, ["ÁREA TEMÁTICA", "AREA TEMATICA", "area_tematica", "areaTematica", "AREA"]) || ""
           ).trim();
           const codigoArea = String(
             getField(row, ["codigoArea", "codigo", "codigo_area", "CODIGO_AREA"]) || ""
@@ -633,9 +661,22 @@ router.post(
 
 router.get("/perfil", verifyToken, async (req, res) => {
   const usuario = await Usuario.findByPk(req.usuario.id, {
-    attributes: ["id", "nombre", "apellido", "email", "rol", "areaId"],
+    attributes: [
+      "id",
+      "documento",
+      "nombre",
+      "apellido",
+      "email",
+      "rol",
+      "areaId",
+      "regionalId",
+      "regionalNombre",
+      "centroFormacionId",
+      "centroNombre"
+    ],
   });
-  res.json({ mensaje: "Acceso autorizado", usuario });
+
+  res.json(usuario);
 });
 
 router.get("/", verifyToken, async (req, res) => {
@@ -725,7 +766,7 @@ router.post("/cambiar-password", verifyToken, async (req, res) => {
       // Verificar contraseña actual: puede ser el documento o la contraseña guardada
       const documentoUsuario = usuario.documento || "";
       const passwordEsDocumento = passwordActual.trim() === documentoUsuario.trim();
-      
+
       let passwordValida = false;
       if (passwordEsDocumento) {
         // Si ingresa su documento, es válido
@@ -1096,5 +1137,140 @@ router.delete("/notificaciones/eliminar-todas", verifyToken, async (req, res) =>
   }
 });
 
+// POST - Crear reporte
+router.post("/reportes", verifyToken, async (req, res) => {
+  try {
+    console.log("=== CREAR REPORTE ===");
+    console.log("Datos recibidos:", req.body);
+    console.log("Usuario ID:", req.usuario.id);
+
+    const { documento, nombre, codRegional, regional, codCentro, centroFormacion, descripcion } = req.body;
+    const usuarioId = req.usuario.id;
+
+    if (!descripcion || descripcion.trim() === "") {
+      return res.status(400).json({ mensaje: "La descripción es requerida" });
+    }
+
+    console.log("Creando reporte para usuario:", usuarioId);
+
+    const reporte = await Reporte.create({
+      usuarioId,
+      documento: documento || null,
+      nombre: nombre || null,
+      regionId: codRegional || null,
+      regionalNombre: regional || null,
+      centroFormacionId: codCentro || null,
+      centroNombre: centroFormacion || null,
+      descripcion: descripcion.trim(),
+    });
+
+    console.log("Reporte creado:", reporte.id);
+
+    // Notificar a los administradores
+    const administradores = await Usuario.findAll({
+      where: { rol: "Administrador" },
+    });
+
+    console.log("Administradores encontrados:", administradores.length);
+
+    if (administradores.length > 0) {
+      // Construir URLs para revisar el reporte y evidencia
+      const urlEvidencia = `https://drive.google.com/drive/u/0/folders/1Bx5FZ7aEECGqisCFeeNcozHSjJz5P-IV`;
+      const mensajeNotificacion = `📋 NUEVO REPORTE\n\nInstructor: ${nombre}\nRegional: ${regional || "N/A"}\nCentro: ${centroFormacion || "N/A"}\n\nDescripción del reporte:\n"${descripcion}"\n\n📁 Carpeta de evidencias: ${urlEvidencia}\n\nRevisa el reporte en el panel de administración.`;
+      
+      await Promise.all(
+        administradores.map((admin) =>
+          Notificacion.create({
+            usuarioId: admin.id,
+            asunto: "📋 Nuevo Reporte Enviado",
+            mensaje: mensajeNotificacion,
+            areaId: null,
+            leida: false,
+          })
+        )
+      );
+
+      console.log("Notificaciones creadas");
+    }
+
+    res.status(201).json({
+      mensaje: "✅ Reporte enviado exitosamente",
+      reporte,
+    });
+  } catch (err) {
+    console.error("❌ Error al crear reporte:", err);
+    console.error("Stack:", err.stack);
+    res.status(500).json({ 
+      mensaje: "Error al guardar el reporte", 
+      error: err.message,
+      details: err.stack 
+    });
+  }
+});
+
+// GET - Obtener reportes del usuario
+router.get("/reportes", verifyToken, async (req, res) => {
+  try {
+    const usuarioId = req.usuario.id;
+
+    const reportes = await Reporte.findAll({
+      where: { usuarioId },
+      order: [["fechaCreacion", "DESC"]],
+    });
+
+    res.json(reportes);
+  } catch (err) {
+    console.error("Error al obtener reportes:", err);
+    res.status(500).json({ mensaje: "Error al obtener reportes" });
+  }
+});
+
+// GET /api/usuarios/reportes - Obtener reportes (admin)
+router.get("/reportes", verifyToken, async (req, res) => {
+  try {
+    if (req.usuario.rol !== "Administrador") {
+      return res.status(403).json({ mensaje: "Solo administradores pueden ver reportes" });
+    }
+
+    const { usuarioId } = req.query;
+
+    const reportes = await Reporte.findAll({
+      where: usuarioId ? { usuarioId } : {},
+      include: [
+        {
+          model: Usuario,
+          attributes: ["id", "nombre", "email"],
+        },
+      ],
+      order: [["fechaCreacion", "DESC"]],
+    });
+
+    res.json(reportes);
+  } catch (err) {
+    console.error("Error al obtener reportes:", err);
+    res.status(500).json({ mensaje: "Error al obtener reportes" });
+  }
+});
+
+// GET /api/usuarios/:id/evidencias - Obtener archivos/evidencias de un usuario (admin)
+router.get("/:usuarioId/evidencias", verifyToken, async (req, res) => {
+  try {
+    if (req.usuario.rol !== "Administrador") {
+      return res.status(403).json({ mensaje: "Solo administradores pueden ver evidencias" });
+    }
+
+    const { usuarioId } = req.params;
+
+    const archivos = await Archivo.findAll({
+      where: { usuarioId },
+      order: [["fechaCarga", "DESC"]],
+    });
+
+    res.json(archivos);
+  } catch (err) {
+    console.error("Error al obtener evidencias:", err);
+    res.status(500).json({ mensaje: "Error al obtener evidencias" });
+  }
+});
 
 export default router;

@@ -106,6 +106,8 @@ app.get("/", (req, res) => {
 
 const server = app.listen(PORT, () => console.log(`✅ Servidor corriendo en http://localhost:${PORT}`));
 
+configurarCronJobs();
+
 server.on("error", (error) => {
   if (error.code === "EADDRINUSE") {
     console.error(`❌ El puerto ${PORT} ya está en uso.`);

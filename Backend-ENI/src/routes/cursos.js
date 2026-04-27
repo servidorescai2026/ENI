@@ -10,7 +10,8 @@ import { Op, QueryTypes } from "sequelize";
 import verifyToken from "../middleware/verifyToken.js";
 import verifyAdmin from "../middleware/verifyAdmin.js";
 import multer from "multer";
-import xlsx from "xlsx";
+import ExcelJS from "exceljs";
+import * as monitoriaService from "../services/monitoriaService.js";
 
 const router = express.Router();
 const uploadExcel = multer({ storage: multer.memoryStorage() });
@@ -183,11 +184,11 @@ const buildEvidenceStatuses = (curso, usuarios, evidencias) => {
     const archivosUsuario = evidenciasPorUsuario.get(Number(usuario.id)) || [];
     const evidenciasPosteriores = fechaFin
       ? archivosUsuario.filter((item) => {
-          const fechaCarga = item.fechaCarga ? new Date(item.fechaCarga) : null;
-          if (!fechaCarga || Number.isNaN(fechaCarga.getTime())) return false;
-          fechaCarga.setHours(0, 0, 0, 0);
-          return fechaCarga >= fechaFin;
-        })
+        const fechaCarga = item.fechaCarga ? new Date(item.fechaCarga) : null;
+        if (!fechaCarga || Number.isNaN(fechaCarga.getTime())) return false;
+        fechaCarga.setHours(0, 0, 0, 0);
+        return fechaCarga >= fechaFin;
+      })
       : archivosUsuario;
 
     let estado = "curso_vigente";
@@ -216,11 +217,11 @@ const buildEvidenceStatuses = (curso, usuarios, evidencias) => {
       fechaFinCurso: curso.fechaFin,
       ultimaEvidencia: ultimaEvidencia
         ? {
-            id: ultimaEvidencia.id,
-            nombre: ultimaEvidencia.nombre,
-            estado: ultimaEvidencia.estado,
-            fechaCarga: ultimaEvidencia.fechaCarga,
-          }
+          id: ultimaEvidencia.id,
+          nombre: ultimaEvidencia.nombre,
+          estado: ultimaEvidencia.estado,
+          fechaCarga: ultimaEvidencia.fechaCarga,
+        }
         : null,
     };
   });
@@ -236,6 +237,137 @@ const buildEvidenceStatuses = (curso, usuarios, evidencias) => {
       rechazada: usuariosEstado.filter((item) => item.estado === "rechazada").length,
     },
   };
+};
+
+
+const splitFullName = (fullName = "") => {
+  const cleanName = String(fullName || "").trim().replace(/\s+/g, " ");
+  if (!cleanName) {
+    return { nombre: null, apellido: null };
+  }
+
+  const parts = cleanName.split(" ");
+  if (parts.length === 1) {
+    return { nombre: parts[0], apellido: null };
+  }
+
+  return {
+    nombre: parts.slice(0, 2).join(" "),
+    apellido: parts.slice(2).join(" ") || parts[parts.length - 1],
+  };
+};
+
+const normalizeMonitoriaStatus = (value = "") => {
+  const text = normalizeText(value);
+  if (!text) return null;
+
+  if (text.includes("rechaz")) return "rechazado";
+  if (text.includes("pendient") && text.includes("revision")) return "pendiente_revision";
+  if (text.includes("pendient")) return "pendiente";
+  if (text.includes("aprob") || text.includes("cumpl") || text.includes("entreg")) return "al-dia";
+  return null;
+};
+
+const isEvidenceAfterCourseEnd = (evidencias = [], fechaFinCurso) => {
+  if (!fechaFinCurso) return false;
+
+  return evidencias.some((item) => {
+    const fechaCarga = parseDateOnlyAsLocal(item.fechaCarga);
+    return fechaCarga && fechaCarga >= fechaFinCurso;
+  });
+};
+
+const resolveUsuarioFromRow = async (row) => {
+  const documento = String(getField(row, [
+    "documento",
+    "DOCUMENTO",
+    "N° Documento del Participante",
+    "N DOCUMENTO DEL PARTICIPANTE",
+    "Documento del Participante",
+    "id",
+  ]) || "").trim();
+
+  const email = String(getField(row, ["correo", "correo sena", "email", "mail"]) || "").trim().toLowerCase();
+  const nombreCompleto = String(getField(row, [
+    "Nombres y Apellidos del Participante",
+    "NOMBRE INSTRUCTOR",
+    "Nombre Instructor",
+    "Nombre del Participante",
+  ]) || "").trim();
+
+  if (documento || email) {
+    return Usuario.findOne({
+      where: {
+        [Op.or]: [
+          ...(documento ? [{ documento }] : []),
+          ...(email ? [{ email }] : []),
+        ],
+      },
+    });
+  }
+
+  if (nombreCompleto) {
+    const { nombre, apellido } = splitFullName(nombreCompleto);
+    return Usuario.findOne({
+      where: apellido
+        ? {
+          [Op.and]: [
+            { nombre: { [Op.like]: `%${nombre}%` } },
+            { apellido: { [Op.like]: `%${apellido}%` } },
+          ],
+        }
+        : {
+          nombre: { [Op.like]: `%${nombre}%` },
+        },
+    });
+  }
+
+  return null;
+};
+
+const resolveCursoFromRow = async (row) => {
+  const codigoCapacitacion = String(getField(row, [
+    "Código de Capacitación",
+    "Codigo de Capacitacion",
+    "CODIGO CAPACITACION",
+    "codigo_capacitacion",
+  ]) || "").trim();
+
+  const nombreCurso = String(getField(row, [
+    "Denominación de la Capacitación",
+    "DENOMINACIÓN DE LA CAPACITACIÓN",
+    "DENOMINACION DE LA CAPACITACION",
+    "Curso",
+    "CURSO",
+  ]) || "").trim();
+
+  if (codigoCapacitacion) {
+    const cursoPorCodigo = await Curso.findOne({ where: { codigoCapacitacion } });
+    if (cursoPorCodigo) {
+      return cursoPorCodigo;
+    }
+  }
+
+  if (nombreCurso) {
+    const cursoPorNombre = await Curso.findOne({ where: { nombre: nombreCurso } });
+    if (cursoPorNombre) {
+      return cursoPorNombre;
+    }
+
+    const cursoLike = await Curso.findOne({
+      where: {
+        nombre: {
+          [Op.like]: `%${nombreCurso}%`,
+        },
+      },
+    });
+
+    if (cursoLike) {
+      return cursoLike;
+    }
+  }
+
+  return null;
 };
 
 // GET /api/cursos - Obtener todos los cursos (sin autenticación requerida)
@@ -549,12 +681,12 @@ router.post("/upload-bulk", verifyAdmin, uploadExcel.single("file"), async (req,
 
         const evidenciasCurso = usuariosAsignables.length
           ? await Archivo.findAll({
-              where: {
-                usuarioId: { [Op.in]: usuariosAsignables.map((usuario) => usuario.id) },
-              },
-              attributes: ["id", "usuarioId", "nombre", "estado", "fechaCarga"],
-              transaction,
-            })
+            where: {
+              usuarioId: { [Op.in]: usuariosAsignables.map((usuario) => usuario.id) },
+            },
+            attributes: ["id", "usuarioId", "nombre", "estado", "fechaCarga"],
+            transaction,
+          })
           : [];
 
         const estadoEvidencias = buildEvidenceStatuses(curso, usuariosAsignables, evidenciasCurso);
@@ -604,6 +736,224 @@ router.post("/upload-bulk", verifyAdmin, uploadExcel.single("file"), async (req,
   }
 });
 
+router.post("/monitoria/validar-excel", verifyAdmin, uploadExcel.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ mensaje: "Debes adjuntar un archivo Excel o CSV" });
+    }
+
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer", cellDates: true });
+    const sheetName = workbook.SheetNames[0];
+    const matrix = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      header: 1,
+      defval: "",
+      blankrows: false,
+    });
+
+    const headerRowIndex = matrix.findIndex((row) => {
+      const normalizedCells = row.map((cell) => normalizeText(cell));
+      const tienePersona = normalizedCells.some((cell) =>
+        [
+          "documento",
+          "n° documento del participante",
+          "n documento del participante",
+          "nombre",
+          "nombres y apellidos del participante",
+          "correo",
+          "email",
+        ].includes(cell)
+      );
+      const tieneCurso = normalizedCells.some((cell) =>
+        [
+          "codigo capacitacion",
+          "codigo de capacitacion",
+          "denominacion de la capacitacion",
+          "curso",
+          "fecha fin",
+          "fecha fin de capacitacion",
+          "fecha fin curso",
+          "estado",
+        ].includes(cell)
+      );
+
+      return tienePersona && tieneCurso;
+    });
+
+    if (headerRowIndex === -1) {
+      return res.status(400).json({
+        mensaje: "No se encontró una fila de encabezados válida en el Excel de monitoría",
+        detalles: { encabezadosDetectados: matrix.slice(0, 5) },
+      });
+    }
+
+    const rawHeaders = matrix[headerRowIndex].map((cell, index) => {
+      const value = String(cell || "").trim();
+      return value || `columna_${index + 1}`;
+    });
+
+    const rows = matrix
+      .slice(headerRowIndex + 1)
+      .filter((row) => row.some((cell) => String(cell || "").trim() !== ""))
+      .map((row) => {
+        const mappedRow = {};
+        rawHeaders.forEach((header, index) => {
+          mappedRow[header] = row[index] ?? "";
+        });
+        return mappedRow;
+      });
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const resultado = {
+      total: rows.length,
+      alDia: 0,
+      pendiente: 0,
+      pendienteRevision: 0,
+      rechazado: 0,
+      sinUsuario: 0,
+      sinCurso: 0,
+      sinFechaFin: 0,
+    };
+
+    const detalles = [];
+
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const fila = index + headerRowIndex + 2;
+
+      const usuario = await resolveUsuarioFromRow(row);
+      const curso = await resolveCursoFromRow(row);
+      const estadoExcel = normalizeMonitoriaStatus(getField(row, ["estado", "estado evidencia", "evidencia", "status"]));
+      const fechaFinFila = parseDateOnlyAsLocal(getField(row, [
+        "fecha fin",
+        "fecha fin curso",
+        "fecha fin de capacitacion",
+        "fecha fin capacitación",
+        "fecha_fin",
+      ]));
+
+      const fechaFinCurso = fechaFinFila
+        || parseDateOnlyAsLocal(curso?.fechaFin)
+        || parseDateOnlyAsLocal(curso?.fechaCierreInscripcion);
+
+      let estado = estadoExcel || "al-dia";
+      let observacion = [];
+
+      if (!usuario) {
+        resultado.sinUsuario += 1;
+        observacion.push("No se encontró usuario en la base de datos");
+      }
+
+      if (!curso) {
+        resultado.sinCurso += 1;
+        observacion.push("No se encontró curso asociado en la base de datos");
+      }
+
+      if (!fechaFinCurso) {
+        resultado.sinFechaFin += 1;
+        observacion.push("No hay fecha de fin para calcular deuda");
+      }
+
+      if (!estadoExcel && usuario && fechaFinCurso) {
+        const evidenciasUsuario = await Archivo.findAll({
+          where: { usuarioId: usuario.id },
+          attributes: ["id", "estado", "fechaCarga"],
+        });
+
+        const hayEvidenciaPosterior = isEvidenceAfterCourseEnd(evidenciasUsuario, fechaFinCurso);
+        const hayPendiente = evidenciasUsuario.some((item) => normalizeText(item.estado) === "pendiente");
+        const hayRechazada = evidenciasUsuario.some((item) => normalizeText(item.estado) === "rechazado");
+
+        if (hayPendiente) {
+          estado = "pendiente_revision";
+        } else if (hayRechazada) {
+          estado = "rechazado";
+        } else if (fechaFinCurso <= hoy && !hayEvidenciaPosterior) {
+          estado = "pendiente";
+        } else {
+          estado = "al-dia";
+        }
+      }
+
+      let diasEnDeuda = null;
+      if ((estado === "pendiente" || estado === "pendiente_revision") && fechaFinCurso) {
+        diasEnDeuda = Math.max(0, Math.floor((hoy - fechaFinCurso) / (1000 * 60 * 60 * 24)));
+      }
+
+      if (estado === "al-dia") resultado.alDia += 1;
+      if (estado === "pendiente") resultado.pendiente += 1;
+      if (estado === "pendiente_revision") resultado.pendienteRevision += 1;
+      if (estado === "rechazado") resultado.rechazado += 1;
+
+      detalles.push({
+        fila,
+        documento: String(getField(row, ["documento", "DOCUMENTO", "N° Documento del Participante", "Documento del Participante"]) || "").trim(),
+        nombre: [
+          getField(row, ["nombre", "Nombre"]),
+          getField(row, ["apellido", "Apellido"]),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || String(getField(row, ["Nombres y Apellidos del Participante", "Nombre del Participante"]) || "").trim(),
+        email: String(getField(row, ["correo", "correo sena", "email"]) || "").trim(),
+        curso: curso?.nombre || String(getField(row, ["Denominación de la Capacitación", "Curso", "CURSO"]) || "").trim(),
+        fechaFin: fechaFinCurso ? fechaFinCurso.toISOString().slice(0, 10) : null,
+        estado,
+        diasEnDeuda,
+        observacion: observacion.length ? observacion.join(" | ") : null,
+      });
+    }
+
+    return res.json({
+      mensaje: "Validación de monitoría completada",
+      resumen: resultado,
+      filas: detalles,
+      encabezadosDetectados: rawHeaders,
+      filaEncabezados: headerRowIndex + 1,
+    });
+  } catch (error) {
+    console.error("Error validando monitoría desde Excel:", error);
+    return res.status(500).json({
+      mensaje: "Error al validar monitoría desde Excel",
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/cursos/monitoria/data - Obtener datos procesados para monitoría
+router.get("/monitoria/data", verifyAdmin, async (req, res) => {
+  try {
+    const data = await monitoriaService.getMonitoriaData();
+    res.json(data);
+  } catch (error) {
+    console.error("Error al obtener datos de monitoría:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/monitoria/reporte-excel", async (req, res) => {
+  try {
+    const buffer = await monitoriaService.generateMonitoriaExcel();
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=reporte_monitoria_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error al generar reporte Excel:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 router.get("/:id/evidencia-resumen", verifyAdmin, async (req, res) => {
   try {
     const curso = await Curso.findByPk(req.params.id, { attributes: courseAttributes });
@@ -622,9 +972,9 @@ router.get("/:id/evidencia-resumen", verifyAdmin, async (req, res) => {
 
     const evidencias = usuarios.length
       ? await Archivo.findAll({
-          where: { usuarioId: { [Op.in]: usuarios.map((usuario) => usuario.id) } },
-          attributes: ["id", "usuarioId", "nombre", "estado", "fechaCarga"],
-        })
+        where: { usuarioId: { [Op.in]: usuarios.map((usuario) => usuario.id) } },
+        attributes: ["id", "usuarioId", "nombre", "estado", "fechaCarga"],
+      })
       : [];
 
     const estadoEvidencias = buildEvidenceStatuses(curso, usuarios, evidencias);
@@ -866,8 +1216,8 @@ router.put("/:id", verifyAdmin, async (req, res) => {
     // Validaciones opcionales (solo si se proporcionan)
     const updateData = {};
 
-  // Guardar areaId anterior para detectar cambios
-  const areaIdAnterior = curso.areaId;
+    // Guardar areaId anterior para detectar cambios
+    const areaIdAnterior = curso.areaId;
 
     if (nombre !== undefined) {
       if (typeof nombre !== 'string' || nombre.trim().length === 0 || nombre.length > 255) {
@@ -1112,11 +1462,11 @@ router.delete("/:id", verifyAdmin, async (req, res) => {
 router.post("/notificar-transferencia", async (req, res) => {
   try {
     console.log("=== NOTIFICAR TRANSFERENCIA DE CONOCIMIENTO ===");
-    
+
     // Buscar cursos que han terminado hoy y aún no han recibido notificación
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    
+
     const manana = new Date(hoy);
     manana.setDate(manana.getDate() + 1);
 

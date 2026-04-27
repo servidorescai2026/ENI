@@ -7,6 +7,7 @@ import UpdateCourse from "./services/Cursos/UpdateCourse";
 import DeleteCourse from "./services/Cursos/DeleteCourse";
 import GetCourseAreas from "./services/Cursos/GetCourseAreas";
 import GetCourseEnrollments from "./services/Inscripciones/GetCourseEnrollments";
+import { abbreviateAreaName } from "./utils/areaLabel";
 
 export default function GestionCursos() {
   const navigate = useNavigate();
@@ -47,6 +48,13 @@ export default function GestionCursos() {
 
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const getAreaLabel = (areaId) => {
+    if (!areaId) return "Sin área";
+    const area = areas.find((item) => Number(item.id) === Number(areaId));
+    if (!area) return "N/A";
+    return abbreviateAreaName(area?.nombre || area?.name || area?.descripcion || "");
   };
 
   const formatDateLocal = (value, locale = "es-ES") => {
@@ -371,7 +379,7 @@ export default function GestionCursos() {
                       <option value="">Selecciona un área</option>
                       {areas.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.codigo} - {a.nombre}
+                          {a.codigo} - {abbreviateAreaName(a.nombre || a.name || a.descripcion || a.codigo)}
                         </option>
                       ))}
                     </select>
@@ -442,7 +450,7 @@ export default function GestionCursos() {
                             }}
                           >
                             <span>
-                              {a.codigo} - {a.nombre}
+                              {a.codigo} - {abbreviateAreaName(a.nombre || a.name || a.descripcion || a.codigo)}
                             </span>
                             <button
                               type="button"
@@ -628,7 +636,7 @@ export default function GestionCursos() {
                         <span className="info-icon">🏢</span>
                         <div>
                           <span className="info-label">Área</span>
-                          <span className="info-value">{curso.areaId}</span>
+                          <span className="info-value">{getAreaLabel(curso.areaId)}</span>
                         </div>
                       </div>
                       {curso.fechaInicio && (

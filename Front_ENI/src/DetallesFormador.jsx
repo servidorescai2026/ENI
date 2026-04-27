@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiUrl } from "./config/api";
 import "./css/detalles-formador.css";
+import { abbreviateAreaName } from "./utils/areaLabel";
 
 export default function DetallesFormador() {
   const { formadorId } = useParams();
@@ -110,7 +111,7 @@ export default function DetallesFormador() {
       4: "Marketing",
       5: "Operaciones",
     };
-    return areas[areaId] || `Área ${areaId}`;
+    return abbreviateAreaName(areas[areaId] || `Área ${areaId}`);
   };
 
   const obtenerEstadoBadge = (estado) => {

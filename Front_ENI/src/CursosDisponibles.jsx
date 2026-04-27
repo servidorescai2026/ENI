@@ -6,6 +6,7 @@ import GetAllAreas from "./services/Areas/GetAllAreas";
 import EnrollCourse from "./services/Inscripciones/EnrollCourse";
 import GetUserEnrollments from "./services/Inscripciones/GetUserEnrollments";
 import CancelEnrollment from "./services/Inscripciones/CancelEnrollment";
+import { abbreviateAreaName } from "./utils/areaLabel";
 
 export default function CursosDisponibles() {
     const parseDateOnlyAsLocal = (value) => {
@@ -121,9 +122,9 @@ export default function CursosDisponibles() {
   const getAreaName = (curso) => {
     // revisar varios nombres de campo posibles
     const id = String(curso.areaId ?? curso.area_id ?? curso.area ?? '');
-    if (id && areasMap[id]) return areasMap[id];
+    if (id && areasMap[id]) return abbreviateAreaName(areasMap[id]);
     // si el curso ya incluye un nombre de área en otro campo
-    return curso.areaNombre || curso.areaName || curso.nombreArea || 'Sin área';
+    return abbreviateAreaName(curso.areaNombre || curso.areaName || curso.nombreArea || 'Sin área');
   };
 
   const handleEnroll = async (courseId) => {

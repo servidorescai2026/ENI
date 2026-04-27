@@ -78,6 +78,7 @@ export default function BulkUpload() {
           <div className="bulk-details" style={{ maxWidth: "800px", margin: "1rem auto", textAlign: "left" }}>
             <p><strong>Usuarios creados:</strong> {details.usuariosCreados || 0}</p>
             <p><strong>Usuarios reutilizados:</strong> {details.usuariosReutilizados || 0}</p>
+            <p><strong>Vínculos a cursos:</strong> {details.cursosVinculados || 0}</p>
             <p><strong>Inscripciones creadas:</strong> {details.inscripcionesCreadas || 0}</p>
             <p><strong>Filas omitidas:</strong> {details.filasOmitidas || 0}</p>
             {Array.isArray(details.encabezadosDetectados) && details.encabezadosDetectados.length > 0 && (
@@ -89,6 +90,19 @@ export default function BulkUpload() {
                 <ul>
                   {details.errores.slice(0, 10).map((error, index) => (
                     <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {Array.isArray(details.resultados) && details.resultados.length > 0 && (
+              <div style={{ marginTop: "1rem" }}>
+                <strong>Resultado por usuario:</strong>
+                <ul>
+                  {details.resultados.slice(0, 25).map((item, index) => (
+                    <li key={index}>
+                      Fila {item.fila}: {item.nombre} {item.apellido} - {item.estadoUsuario === "creado" ? "creado" : "ya existía"}
+                      {item.cursoAsignado ? ` - asignado a ${item.cursoAsignado.nombre}` : " - sin curso vinculado"}
+                    </li>
                   ))}
                 </ul>
               </div>

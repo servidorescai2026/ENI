@@ -1,3 +1,4 @@
+import { abbreviateAreaName } from "./utils/areaLabel";
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -155,7 +156,7 @@ export default function Registro() {
           <option value="">Selecciona un área</option>
           {areas.map((a) => (
             <option key={a.id} value={a.codigo}>
-              {a.codigo} - {a.nombre}
+              {a.codigo} - {abbreviateAreaName(a.nombre || a.name || a.descripcion || a.codigo)}
             </option>
           ))}
         </select>

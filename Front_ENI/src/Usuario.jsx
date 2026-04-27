@@ -148,6 +148,10 @@ export default function Usuario() {
     navigate("/verificar-mis-cursos");
   };
 
+  const irAConfiguracion = () => {
+    navigate("/configuracion");
+  };
+
   if (!usuario) return <p>Cargando...</p>;
 
   return (
@@ -197,6 +201,10 @@ export default function Usuario() {
 
           <button className="btn-evidencias" onClick={irASubirEvidencias}>
             Subir evidencias
+          </button>
+
+          <button className="btn-configuracion" onClick={irAConfiguracion}>
+            Configuración
           </button>
 
           <button className="btn-cerrar" onClick={cerrarSesion}>

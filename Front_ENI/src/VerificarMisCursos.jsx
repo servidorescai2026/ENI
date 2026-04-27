@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import GetMyCourses from "./services/Cursos/GetMyCourses";
+import GetAllAreas from "./services/Areas/GetAllAreas";
+import { abbreviateAreaName } from "./utils/areaLabel";
 
 /**
  * Componente para que Formadores verifiquen sus cursos asignados
@@ -10,6 +12,7 @@ export default function VerificarMisCursos() {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(null);
   const [cursos, setCursos] = useState([]);
+  const [areasMap, setAreasMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -24,9 +27,25 @@ export default function VerificarMisCursos() {
       navigate("/usuario");
     } else {
       setUsuario(datosUsuario);
+      loadAreas();
       loadCursos();
     }
   }, [navigate]);
+
+  const loadAreas = async () => {
+    try {
+      const arr = await GetAllAreas();
+      const map = {};
+      (arr || []).forEach((a) => {
+        const id = String(a.id ?? a.codigo ?? a.codigoArea ?? a.areaId ?? a.area_id ?? "");
+        const nombre = a.nombre ?? a.name ?? a.descripcion ?? a.nombreArea ?? "";
+        if (id) map[id] = nombre;
+      });
+      setAreasMap(map);
+    } catch (err) {
+      console.warn("No se pudieron cargar las áreas:", err);
+    }
+  };
 
   const loadCursos = async () => {
     try {
@@ -42,6 +61,13 @@ export default function VerificarMisCursos() {
     }
   };
 
+  const getAreaLabel = (areaId) => {
+    if (!areaId) return "N/A";
+    const nombre = areasMap[String(areaId)];
+    if (!nombre) return "N/A";
+    return abbreviateAreaName(nombre);
+  };
+
   if (!usuario) return <p>Cargando...</p>;
 
   return (
@@ -51,7 +77,7 @@ export default function VerificarMisCursos() {
           <div className="header-title-section">
             <h2>📚 Mis Cursos Asignados</h2>
             <p className="header-subtitle">
-              LOS CURSOS PARA TU AREA: <strong>{usuario.areaId || "N/A"}</strong>
+              LOS CURSOS PARA TU AREA: <strong>{getAreaLabel(usuario.areaId)}</strong>
             </p>
           </div>
           <div className="header-buttons">
@@ -109,8 +135,8 @@ export default function VerificarMisCursos() {
                       <span>{curso.duracion} horas</span>
                     </div>
                     <div className="info-item">
-                      <label>Área ID:</label>
-                      <span>{curso.areaId}</span>
+                      <label>Área:</label>
+                      <span>{getAreaLabel(curso.areaId)}</span>
                     </div>
                   </div>
                 </div>

@@ -25,11 +25,8 @@ export const Curso = sequelize.define(
       }
     },
     duracion: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(50),
       allowNull: false,
-      validate: {
-        min: 1
-      }
     },
     categoria: {
       type: DataTypes.ENUM('Programación', 'Idiomas', 'Matemáticas', 'Ciencias', 'Negocios', 'Arte', 'Otro'),
@@ -78,6 +75,83 @@ export const Curso = sequelize.define(
     fechaCierreInscripcion: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    centroFormacion: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "centro_formacion",
+    },
+    redConocimiento: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "red_conocimiento",
+    },
+    areaTematica: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "area_tematica",
+    },
+    competenciaPic: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: "competencia_pic",
+    },
+    modalidad: {
+      type: DataTypes.ENUM('Presencial', 'Mixta'),
+      allowNull: true,
+    },
+    estrategia: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    tipoCapacitacion: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "tipo_capacitacion",
+    },
+    claseCapacitacion: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "clase_capacitacion",
+    },
+    entidadCapacitadora: {
+      type: DataTypes.ENUM('SIEMENS', 'SENA'),
+      allowNull: true,
+      field: "entidad_capacitadora",
+    },
+    codigoPrograma: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "codigo_programa",
+    },
+    codigoCapacitacion: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "codigo_capacitacion",
+    },
+    nombreFormador: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "nombre_formador",
+    },
+    fechaInicioPresencial: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "fecha_inicio_presencial",
+    },
+    fechaFinPresencial: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "fecha_fin_presencial",
+    },
+    horario: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    lugarCapacitacion: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "lugar_capacitacion",
     },
     created_at: {
       type: DataTypes.DATE,

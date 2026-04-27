@@ -18,6 +18,7 @@ import Configuracion from "./Configuracion";
 import Monitoria from "./Monitoria";
 import DetallesFormador from "./DetallesFormador";
 import BulkUpload from "./BulkUpload";
+import BulkUploadCourses from "./BulkUploadCourses";
 import TourHelpButton from "./TourHelpButton";
 import "./css/global.css";
 
@@ -88,6 +89,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           element={
             <RutaProtegida rolRequerido="Administrador">
               <BulkUpload />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/upload-cursos"
+          element={
+            <RutaProtegida rolRequerido="Administrador">
+              <BulkUploadCourses />
             </RutaProtegida>
           }
         />

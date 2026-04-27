@@ -248,6 +248,9 @@ export default function GestionCursos() {
             <button className="btn-panel" onClick={() => navigate("/admin")}>
               🏠 Panel de Usuario
             </button>
+            <button className="btn-anim" onClick={() => navigate("/upload-cursos")} type="button">
+              📥 Carga masiva
+            </button>
             <button className="btn-nuevo" onClick={() => {
               setShowForm(true);
               setEditingCourse(null);

@@ -3,19 +3,247 @@ import { Curso } from "../database/models/cursos.js";
 import { Area } from "../database/models/area.js";
 import { Usuario } from "../database/models/usuarios.js";
 import { Inscripcion } from "../database/models/inscripciones.js";
+import { Archivo } from "../database/models/archivos.js";
+import { Notificacion } from "../database/models/notificacion.js";
 import { sequelize } from "../database/config.js";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import verifyToken from "../middleware/verifyToken.js";
 import verifyAdmin from "../middleware/verifyAdmin.js";
+import multer from "multer";
+import xlsx from "xlsx";
 
 const router = express.Router();
+const uploadExcel = multer({ storage: multer.memoryStorage() });
+
+const courseAttributes = [
+  "id",
+  "nombre",
+  "descripcion",
+  "duracion",
+  "categoria",
+  "nivel",
+  "areaId",
+  "usuarioId",
+  "fechaInicio",
+  "fechaFin",
+  "tipoLanzamiento",
+  "maxPersonas",
+  "fechaCierreInscripcion",
+  "centroFormacion",
+  "redConocimiento",
+  "areaTematica",
+  "competenciaPic",
+  "modalidad",
+  "estrategia",
+  "tipoCapacitacion",
+  "claseCapacitacion",
+  "entidadCapacitadora",
+  "codigoPrograma",
+  "codigoCapacitacion",
+  "nombreFormador",
+  "fechaInicioPresencial",
+  "fechaFinPresencial",
+  "horario",
+  "lugarCapacitacion",
+  "created_at",
+  "updated_at",
+];
+
+const normalizeText = (value) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+const getNormalizedRow = (row) =>
+  Object.entries(row).reduce((acc, [key, value]) => {
+    acc[normalizeText(String(key).replace(/\s+/g, " "))] = value;
+    return acc;
+  }, {});
+
+const getField = (row, keys) => {
+  const normalizedRow = getNormalizedRow(row);
+
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "") {
+      return row[key];
+    }
+
+    const normalizedKey = normalizeText(String(key).replace(/\s+/g, " "));
+    const normalizedValue = normalizedRow[normalizedKey];
+    if (normalizedValue !== undefined && normalizedValue !== null && String(normalizedValue).trim() !== "") {
+      return normalizedValue;
+    }
+  }
+
+  return null;
+};
+
+const parseDateValue = (value) => {
+  if (!value) return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+
+  if (typeof value === "number") {
+    const parsed = xlsx.SSF.parse_date_code(value);
+    if (!parsed) return null;
+    return new Date(parsed.y, parsed.m - 1, parsed.d);
+  }
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const directDate = new Date(text);
+  if (!Number.isNaN(directDate.getTime())) return directDate;
+
+  const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const rawYear = Number(match[3]);
+  const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+  const parsed = new Date(year, month, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const normalizeEnumValue = (value, allowedValues) => {
+  const text = String(value || "").trim();
+  if (!text) return null;
+
+  const normalized = normalizeText(text);
+  return allowedValues.find((item) => normalizeText(item) === normalized) || null;
+};
+
+const inferDescription = (payload) => {
+  const parts = [
+    payload.nombre,
+    payload.tipoCapacitacion,
+    payload.modalidad,
+    payload.lugarCapacitacion,
+  ].filter(Boolean);
+  return parts.join(" | ");
+};
+
+const buildAreaIndex = (areas) =>
+  areas.map((area) => ({
+    area,
+    codigo: normalizeText(area.codigo),
+    nombre: normalizeText(area.nombre),
+  }));
+
+const resolveAreaByRed = (redConocimiento, indexedAreas) => {
+  const normalizedHint = normalizeText(redConocimiento);
+  if (!normalizedHint) return null;
+
+  const compactHint = normalizedHint
+    .replace(/^red de /, "")
+    .replace(/^red /, "")
+    .replace(/^area de /, "")
+    .replace(/^area /, "");
+
+  const exactMatch = indexedAreas.find(
+    ({ codigo, nombre }) =>
+      codigo === normalizedHint ||
+      nombre === normalizedHint ||
+      nombre === `red de ${compactHint}` ||
+      nombre.endsWith(compactHint)
+  );
+  if (exactMatch) return exactMatch.area;
+
+  const fuzzyMatch = indexedAreas.find(
+    ({ codigo, nombre }) =>
+      codigo.includes(compactHint) ||
+      nombre.includes(compactHint) ||
+      compactHint.includes(nombre.replace(/^red de /, ""))
+  );
+
+  return fuzzyMatch ? fuzzyMatch.area : null;
+};
+
+const buildEvidenceStatuses = (curso, usuarios, evidencias) => {
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+
+  const fechaFin = curso.fechaFin ? new Date(curso.fechaFin) : null;
+  if (fechaFin) {
+    fechaFin.setHours(0, 0, 0, 0);
+  }
+
+  const evidenciasPorUsuario = evidencias.reduce((acc, evidencia) => {
+    const userId = Number(evidencia.usuarioId);
+    if (!acc.has(userId)) {
+      acc.set(userId, []);
+    }
+    acc.get(userId).push(evidencia);
+    return acc;
+  }, new Map());
+
+  const usuariosEstado = usuarios.map((usuario) => {
+    const archivosUsuario = evidenciasPorUsuario.get(Number(usuario.id)) || [];
+    const evidenciasPosteriores = fechaFin
+      ? archivosUsuario.filter((item) => {
+          const fechaCarga = item.fechaCarga ? new Date(item.fechaCarga) : null;
+          if (!fechaCarga || Number.isNaN(fechaCarga.getTime())) return false;
+          fechaCarga.setHours(0, 0, 0, 0);
+          return fechaCarga >= fechaFin;
+        })
+      : archivosUsuario;
+
+    let estado = "curso_vigente";
+
+    if (fechaFin && fechaFin <= now) {
+      if (evidenciasPosteriores.some((item) => item.estado === "pendiente")) {
+        estado = "pendiente_revision";
+      } else if (evidenciasPosteriores.some((item) => item.estado === "rechazado")) {
+        estado = "rechazada";
+      } else if (evidenciasPosteriores.some((item) => item.estado === "aprobado" || item.estado === "pendiente" || item.estado === "rechazado")) {
+        estado = "cumplio";
+      } else {
+        estado = "pendiente";
+      }
+    }
+
+    const ultimaEvidencia = evidenciasPosteriores
+      .slice()
+      .sort((a, b) => new Date(b.fechaCarga) - new Date(a.fechaCarga))[0];
+
+    return {
+      usuarioId: usuario.id,
+      nombre: [usuario.nombre, usuario.apellido].filter(Boolean).join(" ").trim(),
+      email: usuario.email,
+      estado,
+      fechaFinCurso: curso.fechaFin,
+      ultimaEvidencia: ultimaEvidencia
+        ? {
+            id: ultimaEvidencia.id,
+            nombre: ultimaEvidencia.nombre,
+            estado: ultimaEvidencia.estado,
+            fechaCarga: ultimaEvidencia.fechaCarga,
+          }
+        : null,
+    };
+  });
+
+  return {
+    usuarios: usuariosEstado,
+    resumen: {
+      total: usuariosEstado.length,
+      cursoVigente: usuariosEstado.filter((item) => item.estado === "curso_vigente").length,
+      cumplio: usuariosEstado.filter((item) => item.estado === "cumplio").length,
+      pendiente: usuariosEstado.filter((item) => item.estado === "pendiente").length,
+      pendienteRevision: usuariosEstado.filter((item) => item.estado === "pendiente_revision").length,
+      rechazada: usuariosEstado.filter((item) => item.estado === "rechazada").length,
+    },
+  };
+};
 
 // GET /api/cursos - Obtener todos los cursos (sin autenticación requerida)
 router.get("/", async (req, res) => {
   try {
     const cursos = await Curso.findAll({
       order: [['created_at', 'DESC']],
-      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'fechaInicio', 'fechaFin', 'tipoLanzamiento', 'maxPersonas', 'fechaCierreInscripcion', 'created_at', 'updated_at']
+      attributes: courseAttributes,
     });
 
     // Agregar conteo de inscritos activos a cada curso
@@ -59,7 +287,7 @@ router.get("/area/:areaId", async (req, res) => {
 
     const cursos = await Curso.findAll({
       where: { areaId: parseInt(areaId) },
-      attributes: ['id', 'nombre', 'descripcion', 'duracion', 'categoria', 'nivel', 'areaId', 'usuarioId', 'fechaInicio', 'fechaFin', 'tipoLanzamiento', 'maxPersonas', 'fechaCierreInscripcion', 'created_at', 'updated_at'],
+      attributes: courseAttributes,
       order: [['created_at', 'DESC']]
     });
 
@@ -94,6 +322,319 @@ router.get("/area/:areaId", async (req, res) => {
       error: "Error interno del servidor",
       code: "INTERNAL_ERROR"
     });
+  }
+});
+
+router.post("/upload-bulk", verifyAdmin, uploadExcel.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ mensaje: "Debes adjuntar un archivo Excel o CSV" });
+    }
+
+    const notifyUsers = String(req.body.notifyUsers || "false").toLowerCase() === "true";
+    const notificationMessage = String(req.body.notificationMessage || "").trim();
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer", cellDates: true });
+    const sheetName = workbook.SheetNames[0];
+    const matrix = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      header: 1,
+      defval: "",
+      blankrows: false,
+    });
+
+    const expectedHeaders = [
+      "denominacion de la capacitacion",
+      "red de conocimiento",
+      "fecha inicio capacitacion",
+      "fecha fin capacitacion",
+      "codigo de capacitacion",
+      "nombre formador",
+    ];
+
+    const headerRowIndex = matrix.findIndex((row) => {
+      const normalizedCells = row.map((cell) => normalizeText(cell));
+      const matches = expectedHeaders.filter((header) => normalizedCells.includes(header)).length;
+      return matches >= 3;
+    });
+
+    if (headerRowIndex === -1) {
+      return res.status(400).json({
+        mensaje: "No se encontró una fila de encabezados válida en el Excel de cursos",
+        detalles: { encabezadosDetectados: matrix.slice(0, 5) },
+      });
+    }
+
+    const rawHeaders = matrix[headerRowIndex].map((cell, index) => {
+      const value = String(cell || "").trim();
+      return value || `columna_${index + 1}`;
+    });
+
+    const rows = matrix
+      .slice(headerRowIndex + 1)
+      .filter((row) => row.some((cell) => String(cell || "").trim() !== ""))
+      .map((row) => {
+        const mappedRow = {};
+        rawHeaders.forEach((header, index) => {
+          mappedRow[header] = row[index] ?? "";
+        });
+        return mappedRow;
+      });
+
+    if (!rows.length) {
+      return res.status(400).json({ mensaje: "El archivo está vacío" });
+    }
+
+    const areas = await Area.findAll({ attributes: ["id", "codigo", "nombre"] });
+    const indexedAreas = buildAreaIndex(areas);
+    const usuarios = await Usuario.findAll({
+      attributes: ["id", "nombre", "apellido", "email", "areaId", "redConocimiento"],
+    });
+
+    const usuariosIndexados = usuarios.map((usuario) => ({
+      ...usuario.toJSON(),
+      normalizedRed: normalizeText(usuario.redConocimiento),
+    }));
+
+    const detalles = {
+      cursosCreados: 0,
+      cursosActualizados: 0,
+      filasOmitidas: 0,
+      usuariosVinculados: 0,
+      notificacionesEnviadas: 0,
+      errores: [],
+      advertencias: [],
+      encabezadosDetectados: rawHeaders,
+      filaEncabezados: headerRowIndex + 1,
+      cursos: [],
+    };
+
+    await sequelize.transaction(async (transaction) => {
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
+        const numeroFila = headerRowIndex + index + 2;
+
+        const nombre = String(getField(row, ["Denominación de la Capacitación", "Denominacion de la Capacitacion", "nombre"]) || "").trim();
+        const redConocimiento = String(getField(row, ["Red de Conocimiento", "red_conocimiento"]) || "").trim();
+        const fechaInicio = parseDateValue(getField(row, ["Fecha Inicio Capacitación", "Fecha Inicio Capacitacion", "fecha_inicio"]));
+        const fechaFin = parseDateValue(getField(row, ["Fecha Fin Capacitación", "Fecha Fin Capacitacion", "fecha_fin"]));
+
+        if (!nombre || !redConocimiento || !fechaInicio || !fechaFin) {
+          detalles.filasOmitidas += 1;
+          detalles.errores.push(`Fila ${numeroFila}: nombre, red de conocimiento, fecha de inicio y fecha de fin son obligatorios.`);
+          continue;
+        }
+
+        if (fechaFin < fechaInicio) {
+          detalles.filasOmitidas += 1;
+          detalles.errores.push(`Fila ${numeroFila}: la fecha de fin no puede ser menor a la fecha de inicio.`);
+          continue;
+        }
+
+        const fechaInicioPresencial = parseDateValue(getField(row, ["Fecha Inicio Fase Presencial", "fecha_inicio_presencial"]));
+        const fechaFinPresencial = parseDateValue(getField(row, ["Fecha Fin Fase Presencial", "fecha_fin_presencial"]));
+        if (fechaInicioPresencial && fechaFinPresencial && fechaFinPresencial < fechaInicioPresencial) {
+          detalles.filasOmitidas += 1;
+          detalles.errores.push(`Fila ${numeroFila}: la fase presencial tiene fechas inconsistentes.`);
+          continue;
+        }
+
+        const modalidad = normalizeEnumValue(getField(row, ["Modalidad", "modalidad"]), ["Presencial", "Mixta"]);
+        if (getField(row, ["Modalidad", "modalidad"]) && !modalidad) {
+          detalles.filasOmitidas += 1;
+          detalles.errores.push(`Fila ${numeroFila}: la modalidad debe ser Presencial o Mixta.`);
+          continue;
+        }
+
+        const entidadCapacitadora = normalizeEnumValue(getField(row, ["Entidad Capacitadora", "entidad_capacitadora"]), ["SIEMENS", "SENA"]);
+        if (getField(row, ["Entidad Capacitadora", "entidad_capacitadora"]) && !entidadCapacitadora) {
+          detalles.filasOmitidas += 1;
+          detalles.errores.push(`Fila ${numeroFila}: la entidad capacitadora debe ser SIEMENS o SENA.`);
+          continue;
+        }
+
+        const area = resolveAreaByRed(redConocimiento, indexedAreas);
+        if (!area) {
+          detalles.filasOmitidas += 1;
+          detalles.errores.push(`Fila ${numeroFila}: no se encontró una red/área asociada a "${redConocimiento}".`);
+          continue;
+        }
+
+        const normalizedRed = normalizeText(redConocimiento);
+        const usuariosAsignables = usuariosIndexados.filter((usuario) => {
+          if (Number(usuario.areaId) === Number(area.id)) return true;
+          return usuario.normalizedRed && usuario.normalizedRed === normalizedRed;
+        });
+
+        if (!usuariosAsignables.length) {
+          detalles.advertencias.push(`Fila ${numeroFila}: no hay usuarios vinculables para la red "${redConocimiento}".`);
+        }
+
+        const codigoCapacitacion = String(getField(row, ["Código de Capacitación", "Codigo de Capacitacion", "codigo_capacitacion"]) || "").trim() || null;
+        const payload = {
+          nombre,
+          descripcion: inferDescription({
+            nombre,
+            tipoCapacitacion: getField(row, ["Tipo de Capacitación", "Tipo de Capacitacion", "tipo_capacitacion"]),
+            modalidad,
+            lugarCapacitacion: getField(row, ["Ciudad de la Capacitación", "Ciudad de la Capacitacion", "lugar_capacitacion"]),
+          }) || nombre,
+          duracion: String(getField(row, ["Intensidad horaria", "duracion"]) || "0").trim() || "0",
+          categoria: "Otro",
+          nivel: "Básico",
+          areaId: area.id,
+          usuarioId: req.usuario.id,
+          fechaInicio,
+          fechaFin,
+          tipoLanzamiento: "fecha",
+          maxPersonas: null,
+          fechaCierreInscripcion: fechaInicio,
+          centroFormacion: String(getField(row, ["Centro de Formación del Participante", "Centro de Formacion del Participante", "centro_formacion"]) || "").trim() || null,
+          redConocimiento,
+          areaTematica: String(getField(row, ["Área Temática", "Area Tematica", "area_tematica"]) || "").trim() || null,
+          competenciaPic: String(getField(row, ["Competencia del PIC", "competencia_pic"]) || "").trim() || null,
+          modalidad,
+          estrategia: String(getField(row, ["Estrategia", "estrategia"]) || "").trim() || null,
+          tipoCapacitacion: String(getField(row, ["Tipo de Capacitación", "Tipo de Capacitacion", "tipo_capacitacion"]) || "").trim() || null,
+          claseCapacitacion: String(getField(row, ["Clase de la Capacitación", "Clase de la Capacitacion", "clase_capacitacion"]) || "").trim() || null,
+          entidadCapacitadora,
+          codigoPrograma: String(getField(row, ["Código del programa", "Codigo del programa", "codigo_programa"]) || "").trim() || null,
+          codigoCapacitacion,
+          nombreFormador: String(getField(row, ["Nombre Formador", "nombre_formador"]) || "").trim() || null,
+          fechaInicioPresencial,
+          fechaFinPresencial,
+          horario: String(getField(row, ["Horario de Capacitación", "Horario de Capacitacion", "horario"]) || "").trim() || null,
+          lugarCapacitacion: String(getField(row, ["Ciudad de la Capacitación", "Ciudad de la Capacitacion", "lugar_capacitacion"]) || "").trim() || null,
+        };
+
+        let curso = null;
+
+        if (codigoCapacitacion) {
+          curso = await Curso.findOne({ where: { codigoCapacitacion }, transaction });
+        }
+
+        if (!curso) {
+          curso = await Curso.findOne({
+            where: {
+              nombre,
+              fechaInicio,
+              nombreFormador: payload.nombreFormador,
+            },
+            transaction,
+          });
+        }
+
+        if (curso) {
+          await curso.update(payload, { transaction });
+          detalles.cursosActualizados += 1;
+        } else {
+          curso = await Curso.create(payload, { transaction });
+          detalles.cursosCreados += 1;
+        }
+
+        await sequelize.query("DELETE FROM cursos_usuarios WHERE cursoId = ?", {
+          replacements: [curso.id],
+          transaction,
+        });
+
+        for (const usuario of usuariosAsignables) {
+          await sequelize.query(
+            "INSERT INTO cursos_usuarios (cursoId, usuarioId) VALUES (?, ?)",
+            {
+              replacements: [curso.id, usuario.id],
+              transaction,
+            }
+          );
+        }
+
+        detalles.usuariosVinculados += usuariosAsignables.length;
+
+        const evidenciasCurso = usuariosAsignables.length
+          ? await Archivo.findAll({
+              where: {
+                usuarioId: { [Op.in]: usuariosAsignables.map((usuario) => usuario.id) },
+              },
+              attributes: ["id", "usuarioId", "nombre", "estado", "fechaCarga"],
+              transaction,
+            })
+          : [];
+
+        const estadoEvidencias = buildEvidenceStatuses(curso, usuariosAsignables, evidenciasCurso);
+
+        if (notifyUsers && usuariosAsignables.length) {
+          const asunto = `Nueva capacitacion asignada: ${curso.nombre}`;
+          const mensaje = notificationMessage || `Se te ha asignado la capacitacion ${curso.nombre}. Revisa sus fechas y prepara tu evidencia una vez finalice.`;
+          await Notificacion.bulkCreate(
+            usuariosAsignables.map((usuario) => ({
+              usuarioId: usuario.id,
+              areaId: usuario.areaId || area.id,
+              asunto,
+              mensaje,
+            })),
+            { transaction }
+          );
+          detalles.notificacionesEnviadas += usuariosAsignables.length;
+        }
+
+        detalles.cursos.push({
+          id: curso.id,
+          nombre: curso.nombre,
+          codigoCapacitacion: curso.codigoCapacitacion,
+          redConocimiento: curso.redConocimiento,
+          areaId: curso.areaId,
+          usuariosAsignados: usuariosAsignables.length,
+          evidencia: {
+            resumen: estadoEvidencias.resumen,
+            usuarios: estadoEvidencias.usuarios.slice(0, 20),
+          },
+        });
+      }
+    });
+
+    return res.json({
+      mensaje: notifyUsers
+        ? "Cursos importados y notificaciones enviadas correctamente"
+        : "Cursos importados correctamente",
+      detalles,
+    });
+  } catch (error) {
+    console.error("Error al importar cursos:", error);
+    return res.status(500).json({
+      mensaje: "Error al importar cursos",
+      detalles: { errores: [error.message] },
+    });
+  }
+});
+
+router.get("/:id/evidencia-resumen", verifyAdmin, async (req, res) => {
+  try {
+    const curso = await Curso.findByPk(req.params.id, { attributes: courseAttributes });
+    if (!curso) {
+      return res.status(404).json({ error: "Curso no encontrado", code: "COURSE_NOT_FOUND" });
+    }
+
+    const usuarios = await sequelize.query(
+      `SELECT u.id, u.nombre, u.apellido, u.email, u.areaId
+       FROM usuarios u
+       INNER JOIN cursos_usuarios cu ON u.id = cu.usuarioId
+       WHERE cu.cursoId = ?
+       ORDER BY u.nombre ASC`,
+      { replacements: [req.params.id], type: QueryTypes.SELECT }
+    );
+
+    const evidencias = usuarios.length
+      ? await Archivo.findAll({
+          where: { usuarioId: { [Op.in]: usuarios.map((usuario) => usuario.id) } },
+          attributes: ["id", "usuarioId", "nombre", "estado", "fechaCarga"],
+        })
+      : [];
+
+    const estadoEvidencias = buildEvidenceStatuses(curso, usuarios, evidencias);
+    return res.json({
+      curso,
+      evidencia: estadoEvidencias,
+    });
+  } catch (error) {
+    console.error("Error al obtener resumen de evidencias del curso:", error);
+    return res.status(500).json({ error: "Error interno del servidor", code: "INTERNAL_ERROR" });
   }
 });
 

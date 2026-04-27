@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import { Usuario } from "../database/models/usuarios.js";
+import { Curso } from "../database/models/cursos.js";
 import { Area } from "../database/models/area.js";
 import { InscripcionCapacitacion } from "../database/models/inscripciones_capacitacion.js";
 import { Reporte } from "../database/models/reportes.js";
@@ -14,7 +15,7 @@ import multer from "multer";
 import xlsx from "xlsx";
 import fs from "fs";
 import path from "path";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import { sequelize } from "../database/config.js";
 
 dotenv.config();
@@ -121,43 +122,311 @@ const uploadExcel = multer({
   },
 });
 
+const normalizeEvidenceText = (value = "") =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+const findAreaByReference = async (areaReference, transaction) => {
+  const cleanValue = String(areaReference || "").trim();
+
+  if (!cleanValue) {
+    return null;
+  }
+
+  if (/^\d+$/.test(cleanValue)) {
+    const areaById = await Area.findByPk(Number(cleanValue), { transaction });
+    if (areaById) {
+      return areaById;
+    }
+  }
+
+  const candidates = [
+    { codigo: cleanValue },
+    { nombre: cleanValue },
+    { redConocimiento: cleanValue },
+  ];
+
+  for (const where of candidates) {
+    const area = await Area.findOne({ where, transaction });
+    if (area) {
+      return area;
+    }
+  }
+
+  return null;
+};
+
+const findCursoByReference = async (courseReference = {}, transaction) => {
+  const cursoId = Number(courseReference.cursoId);
+  if (Number.isInteger(cursoId) && cursoId > 0) {
+    const cursoById = await Curso.findByPk(cursoId, { transaction });
+    if (cursoById) {
+      return cursoById;
+    }
+  }
+
+  const codigoCapacitacion = String(courseReference.codigoCapacitacion || "").trim();
+  if (codigoCapacitacion) {
+    const cursoByCodigo = await Curso.findOne({
+      where: { codigoCapacitacion },
+      transaction,
+    });
+    if (cursoByCodigo) {
+      return cursoByCodigo;
+    }
+  }
+
+  const nombreCurso = String(courseReference.nombreCurso || "").trim();
+  if (nombreCurso) {
+    const cursoByNombre = await Curso.findOne({
+      where: { nombre: nombreCurso },
+      transaction,
+    });
+    if (cursoByNombre) {
+      return cursoByNombre;
+    }
+
+    const cursoByLike = await Curso.findOne({
+      where: {
+        nombre: {
+          [Op.like]: `%${nombreCurso}%`,
+        },
+      },
+      transaction,
+    });
+
+    if (cursoByLike) {
+      return cursoByLike;
+    }
+  }
+
+  return null;
+};
+
+const vincularUsuarioConCurso = async (usuarioId, cursoId, transaction) => {
+  const vinculacionExistente = await sequelize.query(
+    "SELECT id FROM cursos_usuarios WHERE cursoId = ? AND usuarioId = ? LIMIT 1",
+    {
+      replacements: [cursoId, usuarioId],
+      type: QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+  if (vinculacionExistente.length > 0) {
+    return false;
+  }
+
+  await sequelize.query(
+    "INSERT INTO cursos_usuarios (cursoId, usuarioId) VALUES (?, ?)",
+    {
+      replacements: [cursoId, usuarioId],
+      transaction,
+    }
+  );
+
+  return true;
+};
+
+const parseDateOnlyForEvidence = (value) => {
+  if (!value) return null;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const normalized = new Date(value);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }
+
+  if (typeof value === "number") {
+    const parsed = xlsx.SSF.parse_date_code(value);
+    if (!parsed) return null;
+    return new Date(parsed.y, parsed.m - 1, parsed.d);
+  }
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const directDate = new Date(text);
+  if (!Number.isNaN(directDate.getTime())) {
+    directDate.setHours(0, 0, 0, 0);
+    return directDate;
+  }
+
+  const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const rawYear = Number(match[3]);
+  const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+  const parsed = new Date(year, month, day);
+  parsed.setHours(0, 0, 0, 0);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const calcularEstadoEvidenciaUsuario = (cursosAsignados = [], evidencias = []) => {
+  const fechaActual = new Date();
+  fechaActual.setHours(0, 0, 0, 0);
+
+  const fechasFin = cursosAsignados
+    .map((curso) => parseDateOnlyForEvidence(curso?.fechaFin))
+    .filter(Boolean);
+
+  if (fechasFin.length === 0) {
+    return {
+      estadoEvidencia: "sin_curso",
+      diasEnDeuda: null,
+      cursoPendiente: null,
+      cursosAsignados: 0,
+    };
+  }
+
+  const fechaFinMasReciente = new Date(Math.max(...fechasFin.map((fecha) => fecha.getTime())));
+  fechaFinMasReciente.setHours(0, 0, 0, 0);
+
+  const evidenciasPendientes = evidencias.filter((item) => normalizeEvidenceText(item.estado) === "pendiente");
+  const evidenciasRechazadas = evidencias.filter((item) => normalizeEvidenceText(item.estado) === "rechazado");
+  const evidenciasPosteriores = evidencias.filter((item) => {
+    const fechaCarga = parseDateOnlyForEvidence(item.fechaCarga);
+    return fechaCarga && fechaCarga >= fechaFinMasReciente;
+  });
+
+  let estadoEvidencia = "al-dia";
+
+  if (evidenciasPendientes.length > 0) {
+    estadoEvidencia = "pendiente_revision";
+  } else if (evidenciasRechazadas.length > 0) {
+    estadoEvidencia = "rechazado";
+  } else if (fechaFinMasReciente <= fechaActual && evidenciasPosteriores.length === 0) {
+    estadoEvidencia = "pendiente";
+  }
+
+  const cursoPendiente = cursosAsignados.find((curso) => {
+    const fechaFinCurso = parseDateOnlyForEvidence(curso?.fechaFin);
+    return fechaFinCurso && fechaFinCurso.getTime() === fechaFinMasReciente.getTime();
+  }) || null;
+
+  const diasEnDeuda = estadoEvidencia === "pendiente"
+    ? Math.max(0, Math.floor((fechaActual - fechaFinMasReciente) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  return {
+    estadoEvidencia,
+    diasEnDeuda,
+    cursoPendiente: cursoPendiente
+      ? {
+          id: cursoPendiente.id,
+          nombre: cursoPendiente.nombre,
+          fechaFin: cursoPendiente.fechaFin,
+        }
+      : null,
+    cursosAsignados: cursosAsignados.length,
+  };
+};
+
 
 
 router.post("/register", verifyCaptcha, async (req, res) => {
   try {
-    const { nombre, apellido, email, password, rol = "Formador", codigoArea, } = req.body;
-    if (!nombre || !apellido || !email || !password || !codigoArea)
-      return res.status(400).json({ mensaje: "Nombre, apellido, email, contraseña y el area son requeridos" });
-
-    const existe = await Usuario.findOne({ where: { email } });
-    if (existe)
-      return res.status(400).json({ mensaje: "Ya existe un usuario con ese correo" });
-
-    const area = await Area.findOne({ where: { codigo: codigoArea } });
-
-    if (!area)
-      return res.status(404).json({ mensaje: "No existe un área con ese código" });
-    // Hashear la contraseña antes de guardarla
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const nuevoUsuario = await Usuario.create({
+    const {
       nombre,
       apellido,
+      documento = null,
       email,
-      password: passwordHash,
-      rol,
-      areaId: area.id
+      password,
+      rol = "Formador",
+      codigoArea,
+      areaId,
+      areaNombre,
+      redConocimiento,
+      cursoId,
+      codigoCapacitacion,
+      nombreCurso,
+      regionalId = null,
+      regionalNombre = null,
+      centroFormacionId = null,
+      centroNombre = null,
+    } = req.body;
+
+    if (!nombre || !apellido || !email || !password) {
+      return res.status(400).json({ mensaje: "Nombre, apellido, email y contraseña son requeridos" });
+    }
+
+    const existe = await Usuario.findOne({ where: { email } });
+    if (existe) {
+      return res.status(400).json({ mensaje: "Ya existe un usuario con ese correo" });
+    }
+
+    const area = await findAreaByReference(
+      codigoArea || areaId || areaNombre || redConocimiento,
+      null
+    );
+
+    if (!area) {
+      return res.status(404).json({ mensaje: "No existe un área con ese código o nombre" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const resultadoRegistro = await sequelize.transaction(async (transaction) => {
+      const usuarioCreado = await Usuario.create({
+        documento: documento || null,
+        nombre,
+        apellido,
+        email,
+        password: passwordHash,
+        rol,
+        areaId: area.id,
+        regionalId,
+        regionalNombre,
+        centroFormacionId,
+        centroNombre,
+        redConocimiento: redConocimiento || area.nombre,
+      }, { transaction });
+
+      const curso = await findCursoByReference(
+        { cursoId, codigoCapacitacion, nombreCurso },
+        transaction
+      );
+
+      if (curso) {
+        await vincularUsuarioConCurso(usuarioCreado.id, curso.id, transaction);
+      }
+
+      return {
+        usuarioCreado,
+        cursoAsignado: curso
+          ? {
+              id: curso.id,
+              nombre: curso.nombre,
+              fechaFin: curso.fechaFin,
+            }
+          : null,
+      };
     });
+
+    const estadoEvidencia = calcularEstadoEvidenciaUsuario(
+      resultadoRegistro.cursoAsignado ? [resultadoRegistro.cursoAsignado] : [],
+      []
+    );
 
     res.status(201).json({
       mensaje: "Usuario registrado exitosamente",
       usuario: {
-        id: nuevoUsuario.id,
+        id: resultadoRegistro.usuarioCreado.id,
+        documento,
         nombre,
         apellido,
         email,
         rol,
-        areaId: area.id
+        areaId: area.id,
+        estadoEvidencia: estadoEvidencia.estadoEvidencia,
+        diasEnDeuda: estadoEvidencia.diasEnDeuda,
+        cursoPendiente: estadoEvidencia.cursoPendiente,
+        cursosAsignados: estadoEvidencia.cursosAsignados,
       },
     });
 
@@ -420,11 +689,23 @@ router.post(
 
       const expectedHeaders = [
         "documento",
+        "cc",
+        "cedula",
+        "cédula",
+        "n° documento del participante",
+        "n documento del participante",
+        "numero de documento",
+        "numero documento",
         "correo",
         "correo sena",
         "email",
         "nombre",
+        "nombres",
+        "nombre(s)",
+        "nombres y apellidos del participante",
         "nombre instructor",
+        "apellido",
+        "apellidos",
         "red",
         "red de conocimiento",
         "area",
@@ -434,13 +715,51 @@ router.post(
       const headerRowIndex = matrix.findIndex((row) => {
         const normalizedCells = row.map((cell) => normalizeText(cell));
 
+        const tieneDocumento = normalizedCells.some((cell) =>
+          [
+            "documento",
+            "cc",
+            "cedula",
+            "cédula",
+            "n° documento del participante",
+            "n documento del participante",
+            "numero de documento",
+            "numero documento",
+            "documento de identidad",
+          ].includes(cell)
+        );
+
+        const tieneNombre = normalizedCells.some((cell) =>
+          [
+            "nombre",
+            "nombres",
+            "nombre(s)",
+            "nombre instructor",
+            "nombres y apellidos del participante",
+            "nombres y apellidos",
+            "apellido",
+            "apellidos",
+          ].includes(cell)
+        );
+
+        const tieneCorreo = normalizedCells.some((cell) =>
+          ["correo", "correo sena", "email"].includes(cell)
+        );
+
+        const tieneReferenciaCurso = normalizedCells.some((cell) =>
+          [
+            "codigo capacitacion",
+            "codigo de capacitacion",
+            "codigo curso",
+            "curso",
+            "denominacion de la capacitacion",
+            "denominacion capacitacion",
+          ].includes(cell)
+        );
+
         return (
-          normalizedCells.includes("documento") &&
-          (
-            normalizedCells.includes("correo") ||
-            normalizedCells.includes("correo sena") ||
-            normalizedCells.includes("email")
-          )
+          tieneDocumento &&
+          (tieneNombre || tieneCorreo || tieneReferenciaCurso)
         );
       });
 
@@ -479,8 +798,10 @@ router.post(
           usuariosCreados: 0,
           usuariosReutilizados: 0,
           inscripcionesCreadas: 0,
+          cursosVinculados: 0,
           filasOmitidas: 0,
           errores: [],
+          resultados: [],
           encabezadosDetectados: rawHeaders,
           filaEncabezados: headerRowIndex + 1,
         };
@@ -491,10 +812,35 @@ router.post(
           const row = rows[index];
           const numeroFila = index + 2;
 
-          const documento = String(getField(row, ["documento", "DOCUMENTO", "id", "ID"]) || "").trim();
-          const nombreDirecto = getField(row, ["nombre", "Nombre"]);
-          const apellidoDirecto = getField(row, ["apellido", "Apellido"]);
-          const nombreCompleto = getField(row, ["NOMBRE INSTRUCTOR", "Nombre Instructor", "nombre_instructor"]);
+          const documento = String(getField(row, [
+            "documento",
+            "cc",
+            "cedula",
+            "cédula",
+            "DOCUMENTO",
+            "id",
+            "ID",
+            "N° Documento del Participante",
+            "N DOCUMENTO DEL PARTICIPANTE",
+            "N documento del participante",
+            "Documento del Participante",
+            "Número de Documento",
+            "NUMERO DE DOCUMENTO",
+            "Documento de Identidad",
+          ]) || "").trim();
+          const nombreDirecto = getField(row, ["nombre", "Nombre", "nombres", "Nombres"]);
+          const apellidoDirecto = getField(row, ["apellido", "Apellido", "apellidos", "Apellidos"]);
+          const nombreCompleto = getField(row, [
+            "NOMBRE INSTRUCTOR",
+            "Nombre Instructor",
+            "nombre_instructor",
+            "Nombres y Apellidos del Participante",
+            "NOMBRES Y APELLIDOS DEL PARTICIPANTE",
+            "nombres_apellidos_participante",
+            "Nombre del Participante",
+            "NOMBRES",
+            "NOMBRE COMPLETO",
+          ]);
 
           let nombre = nombreDirecto ? String(nombreDirecto).trim() : null;
           let apellido = apellidoDirecto ? String(apellidoDirecto).trim() : "";
@@ -506,12 +852,23 @@ router.post(
           }
 
           let email = String(
-            getField(row, ["email", "Email", "CORREO", "correo", "Mail", "MAIL", "CORREO SENA"]) || ""
+            getField(row, [
+              "email",
+              "Email",
+              "CORREO",
+              "correo",
+              "Correo",
+              "Mail",
+              "MAIL",
+              "CORREO SENA",
+              "Correo electrónico del Participante",
+              "correo sena",
+              "correo electronico",
+              "correo electrónico",
+              "correo institucional",
+              "correo institucional",
+            ]) || ""
           ).trim().toLowerCase();
-
-          if (!email && documento) {
-            email = `usuario${documento}@example.com`;
-          }
 
           const redConocimiento = String(
             getField(row, ["RED DE CONOCIMIENTO", "redConocimiento", "red_conocimiento", "RED"]) || ""
@@ -523,13 +880,42 @@ router.post(
             getField(row, ["codigoArea", "codigo", "codigo_area", "CODIGO_AREA"]) || ""
           ).trim();
 
-          const area = await buscarArea([codigoArea, redConocimiento, areaTematica], transaction);
+          const cursoReferencia = {
+            cursoId: getField(row, ["cursoId", "curso_id", "ID CURSO", "ID DEL CURSO"]),
+            codigoCapacitacion: getField(row, [
+              "CODIGO CAPACITACION",
+              "CÓDIGO DE CAPACITACIÓN",
+              "CODIGO DE CAPACITACION",
+              "codigo_capacitacion",
+              "codigo curso",
+              "codigo_curso",
+            ]),
+            nombreCurso: getField(row, [
+              "DENOMINACIÓN DE LA CAPACITACIÓN",
+              "DENOMINACION DE LA CAPACITACION",
+              "denominacion_capacitacion",
+              "CURSO",
+              "Curso",
+              "NOMBRE DEL CURSO",
+            ]),
+          };
+
+          let cursoVinculado = await findCursoByReference(cursoReferencia, transaction);
+          let area = await buscarArea([codigoArea, redConocimiento, areaTematica], transaction);
+
+          if (!area && cursoVinculado?.areaId) {
+            area = await Area.findByPk(cursoVinculado.areaId, { transaction });
+          }
+
+          if (!area && cursoVinculado?.redConocimiento) {
+            area = await buscarArea([cursoVinculado.redConocimiento], transaction);
+          }
 
           if (!nombre || !email || !area) {
             const normalizedRow = getNormalizedRow(row);
             detalles.filasOmitidas += 1;
             detalles.errores.push(
-              `Fila ${numeroFila}: faltan datos base o no se encontró el área/red (${redConocimiento || areaTematica || codigoArea || "sin referencia"}). Encabezados: ${Object.keys(normalizedRow).join(", ")}`
+              `Fila ${numeroFila}: faltan datos base o no se encontró el área/red (${redConocimiento || areaTematica || codigoArea || "sin referencia"}). El correo debe venir en el Excel. Encabezados: ${Object.keys(normalizedRow).join(", ")}`
             );
             continue;
           }
@@ -573,6 +959,14 @@ router.post(
               { transaction }
             );
             detalles.usuariosCreados += 1;
+            detalles.resultados.push({
+              fila: numeroFila,
+              email,
+              documento: documento || null,
+              nombre,
+              apellido: apellido || "",
+              estadoUsuario: "creado",
+            });
           } else {
             await usuario.update(
               {
@@ -589,6 +983,32 @@ router.post(
               { transaction }
             );
             detalles.usuariosReutilizados += 1;
+            detalles.resultados.push({
+              fila: numeroFila,
+              email,
+              documento: documento || usuario.documento || null,
+              nombre: usuario.nombre,
+              apellido: usuario.apellido,
+              estadoUsuario: "existente",
+            });
+          }
+
+          if (!cursoVinculado && (documento || cursoReferencia.codigoCapacitacion || cursoReferencia.nombreCurso)) {
+            cursoVinculado = await findCursoByReference(cursoReferencia, transaction);
+          }
+
+          if (cursoVinculado) {
+            const vinculacionCreada = await vincularUsuarioConCurso(usuario.id, cursoVinculado.id, transaction);
+            if (vinculacionCreada) {
+              detalles.cursosVinculados += 1;
+              const ultimoResultado = detalles.resultados[detalles.resultados.length - 1];
+              if (ultimoResultado) {
+                ultimoResultado.cursoAsignado = {
+                  id: cursoVinculado.id,
+                  nombre: cursoVinculado.nombre,
+                };
+              }
+            }
           }
 
           const planInfo = parsePlanMultiplicacion(
@@ -640,7 +1060,7 @@ router.post(
         return detalles;
       });
 
-      if (resultado.usuariosCreados === 0 && resultado.inscripcionesCreadas === 0) {
+      if (resultado.usuariosCreados === 0 && resultado.inscripcionesCreadas === 0 && resultado.cursosVinculados === 0) {
         return res.status(400).json({
           mensaje: "No se encontraron usuarios válidos para importar",
           detalles: resultado,
@@ -648,7 +1068,7 @@ router.post(
       }
 
       res.json({
-        mensaje: `Importación completada: ${resultado.usuariosCreados} usuarios nuevos, ${resultado.usuariosReutilizados} existentes, ${resultado.inscripcionesCreadas} inscripciones de capacitación`,
+        mensaje: `Importación completada: ${resultado.usuariosCreados} usuarios nuevos, ${resultado.usuariosReutilizados} existentes, ${resultado.cursosVinculados} vínculos a cursos y ${resultado.inscripcionesCreadas} inscripciones de capacitación`,
         detalles: resultado,
       });
     } catch (err) {
@@ -676,7 +1096,15 @@ router.get("/perfil", verifyToken, async (req, res) => {
     ],
   });
 
-  res.json(usuario);
+  const area = usuario?.areaId
+    ? await Area.findByPk(usuario.areaId, { attributes: ["id", "codigo", "nombre"] })
+    : null;
+
+  res.json({
+    ...usuario?.toJSON?.(),
+    areaNombre: area?.nombre || null,
+    areaCodigo: area?.codigo || null,
+  });
 });
 
 router.get("/", verifyToken, async (req, res) => {
@@ -690,6 +1118,11 @@ router.get("/", verifyToken, async (req, res) => {
       order: [["nombre", "ASC"], ["apellido", "ASC"]],
     });
 
+    const areas = await Area.findAll({
+      attributes: ["id", "codigo", "nombre"],
+    });
+    const areasPorId = new Map(areas.map((area) => [Number(area.id), area.toJSON ? area.toJSON() : area]));
+
     const usuariosConEstadoPassword = await Promise.all(
       usuarios.map(async (usuario) => ({
         ...usuario.toJSON(),
@@ -697,7 +1130,58 @@ router.get("/", verifyToken, async (req, res) => {
       }))
     );
 
-    return res.json(usuariosConEstadoPassword);
+    const cursos = await Curso.findAll({
+      attributes: ["id", "nombre", "fechaFin"],
+    });
+
+    const relacionesCursos = await sequelize.query(
+      "SELECT usuarioId, cursoId FROM cursos_usuarios",
+      { type: QueryTypes.SELECT }
+    );
+
+    const evidencias = await Archivo.findAll({
+      attributes: ["usuarioId", "estado", "fechaCarga"],
+    });
+
+    const cursosPorId = new Map(cursos.map((curso) => [Number(curso.id), curso.toJSON() || curso]));
+    const cursosPorUsuario = new Map();
+    for (const relacion of relacionesCursos) {
+      const usuarioId = Number(relacion.usuarioId);
+      const curso = cursosPorId.get(Number(relacion.cursoId));
+      if (!curso) continue;
+
+      if (!cursosPorUsuario.has(usuarioId)) {
+        cursosPorUsuario.set(usuarioId, []);
+      }
+
+      cursosPorUsuario.get(usuarioId).push(curso);
+    }
+
+    const evidenciasPorUsuario = new Map();
+    for (const evidencia of evidencias) {
+      const usuarioId = Number(evidencia.usuarioId);
+      if (!evidenciasPorUsuario.has(usuarioId)) {
+        evidenciasPorUsuario.set(usuarioId, []);
+      }
+      evidenciasPorUsuario.get(usuarioId).push(evidencia.toJSON ? evidencia.toJSON() : evidencia);
+    }
+
+    const usuariosEnriquecidos = usuariosConEstadoPassword.map((usuario) => {
+      const area = areasPorId.get(Number(usuario.areaId));
+      const estadoEvidencia = calcularEstadoEvidenciaUsuario(
+        cursosPorUsuario.get(Number(usuario.id)) || [],
+        evidenciasPorUsuario.get(Number(usuario.id)) || []
+      );
+
+      return {
+        ...usuario,
+        areaNombre: area?.nombre || null,
+        areaCodigo: area?.codigo || null,
+        ...estadoEvidencia,
+      };
+    });
+
+    return res.json(usuariosEnriquecidos);
   } catch (error) {
     console.error("Error al listar usuarios:", error);
     return res.status(500).json({ mensaje: "Error al obtener usuarios", error: error.message });

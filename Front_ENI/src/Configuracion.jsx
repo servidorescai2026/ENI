@@ -149,7 +149,7 @@ export default function Configuracion() {
       return;
     }
 
-    if (passwordForm.nuevaPassword === "ENI2024*") {
+    if (passwordForm.nuevaPassword === passwordActual) {
       setMensajePassword("Debes elegir una contraseña diferente a la temporal predeterminada.");
       return;
     }
@@ -357,7 +357,7 @@ export default function Configuracion() {
               <h3>Cambio obligatorio de contraseña</h3>
             </div>
             <p className="password-modal-text">
-              Por seguridad, debes reemplazar la clave temporal `ENI2024*` antes de acceder al sistema.
+              Por seguridad, debes reemplazar la clave temporal "TU CEDULA" antes de acceder al sistema.
             </p>
             <p className="password-modal-text password-modal-text-muted">
               Hasta completar este paso, no podrás navegar a otros módulos.

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiUrl } from "./config/api";
+import { abbreviateAreaName } from "./utils/areaLabel";
 
 export default function EnviarNotificacionPorArea() {
   const navigate = useNavigate();
@@ -92,7 +93,7 @@ export default function EnviarNotificacionPorArea() {
               <option value="">Selecciona un área</option>
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.codigo} - {a.nombre}
+                  {a.codigo} - {abbreviateAreaName(a.nombre || a.name || a.descripcion || a.codigo)}
                 </option>
               ))}
             </select>
@@ -186,7 +187,7 @@ export default function EnviarNotificacionPorArea() {
                   }}
                 >
                   <span>
-                    {a.codigo} - {a.nombre}
+                    {a.codigo} - {abbreviateAreaName(a.nombre || a.name || a.descripcion || a.codigo)}
                   </span>
                   <button
                     type="button"

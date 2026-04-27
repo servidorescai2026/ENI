@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiUrl } from "./config/api";
+import * as monitoriaService from "./services/Monitoria/monitoriaService";
+import MonitoriaCard from "./components/Monitoria/MonitoriaCard";
 
 export default function Monitoria() {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(null);
-  const [formadoresSinEvidencias, setFormadoresSinEvidencias] = useState([]);
+  const [formadoresMonitoria, setFormadoresMonitoria] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [filtro, setFiltro] = useState("todos"); // todos, al-dia, pendiente-revision, pendientes, con-evidencia
-
-  const normalizarLista = (payload) => {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.data)) return payload.data;
-    if (Array.isArray(payload?.usuarios)) return payload.usuarios;
-    if (Array.isArray(payload?.results)) return payload.results;
-    return [];
-  };
+  const [filtro, setFiltro] = useState("pendientes"); // todos, al-dia, pendiente-revision, pendientes
+  const [exportandoReporte, setExportandoReporte] = useState(false);
 
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
@@ -32,222 +26,37 @@ export default function Monitoria() {
   }, [navigate]);
 
   const cargarDatos = async () => {
-    const token = localStorage.getItem("token");
     setCargando(true);
-
     try {
-      // Cargar todos los usuarios (formadores)
-      const resUsuarios = await fetch(apiUrl("/api/usuarios"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const dataUsuarios = await resUsuarios.json();
-      if (!resUsuarios.ok) {
-        throw new Error(dataUsuarios?.mensaje || "No se pudieron cargar los usuarios");
-      }
-
-      // Cargar todos los cursos
-      const resCursos = await fetch(apiUrl("/api/cursos"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const dataCursos = await resCursos.json();
-      if (!resCursos.ok) {
-        throw new Error(dataCursos?.mensaje || "No se pudieron cargar los cursos");
-      }
-
-      // Cargar todas las evidencias/archivos
-      const resEvidencias = await fetch(apiUrl("/api/archivos"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const dataEvidencias = await resEvidencias.json();
-      if (!resEvidencias.ok) {
-        throw new Error(dataEvidencias?.message || "No se pudieron cargar las evidencias");
-      }
-
-      // Cargar inscripciones regulares (con fallback si no existe el endpoint)
-      let dataInscripciones = { data: [] };
-      try {
-        const resInscripciones = await fetch(apiUrl("/api/inscripciones"), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (resInscripciones.ok) {
-          dataInscripciones = await resInscripciones.json();
-        }
-      } catch (e) {
-        console.log("Inscripciones regulares no disponibles");
-      }
-
-      const usuariosList = normalizarLista(dataUsuarios);
-      const cursosList = normalizarLista(dataCursos);
-      const evidenciasList = normalizarLista(dataEvidencias);
-      const inscripcionesList = normalizarLista(dataInscripciones);
-
-      // Filtrar solo formadores
-      const formadoresList = usuariosList.filter(u => u.rol === "Formador");
-
-      // Procesar formadores sin evidencias
-      procesarFormadoresSinEvidencias(formadoresList, cursosList, evidenciasList, inscripcionesList);
+      const data = await monitoriaService.getMonitoriaData();
+      setFormadoresMonitoria(data);
     } catch (error) {
       console.error("Error al cargar datos:", error);
-      setFormadoresSinEvidencias([]);
+      alert("No se pudieron cargar los datos de monitoría");
     } finally {
       setCargando(false);
     }
   };
 
-  const procesarFormadoresSinEvidencias = (formadoresList, cursosList, evidenciasList, inscripcionesList = []) => {
-    const fechaActual = new Date();
-    fechaActual.setHours(0, 0, 0, 0);
-    const primerDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
-    
-    const parseDateOnlyAsLocal = (value) => {
-      if (!value) return null;
-      const raw = String(value).trim().slice(0, 10);
-      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (match) {
-        const [, y, m, d] = match;
-        return new Date(Number(y), Number(m) - 1, Number(d), 0, 0, 0);
-      }
-      return null;
-    };
-    
-    const formadoresConProblemas = [];
-
-    formadoresList.forEach(formador => {
-      // Obtener cursos del formador (por área)
-      const cursosFormador = cursosList.filter(c => c.areaId === formador.areaId);
-      
-      // Obtener evidencias del formador
-      const evidenciasFormador = evidenciasList.filter(e => e.usuarioId === formador.id);
-
-      // Obtener inscripciones regulares del formador
-      const inscripcionesRegularesFormador = inscripcionesList.filter((i) => {
-        const usuarioId = i.usuarioId || i.usuario_id || (i.usuario?.id);
-        return Number(usuarioId) === Number(formador.id);
-      });
-      const inscripcionesRegularesActivas = inscripcionesRegularesFormador.filter((i) => {
-        const estado = String(i.estado || "").toLowerCase();
-        return estado === "" || estado === "activo";
-      });
-
-      // Recopilar todas las fechas de fin de cursos
-      const fechasFinCursos = [];
-
-      // Fechas de cursos regulares
-      inscripcionesRegularesActivas.forEach(insc => {
-        const cursoId = insc.cursoId || insc.curso_id || (insc.curso?.id);
-        const cursoReg = cursosList.find(c => Number(c.id) === Number(cursoId));
-        if (cursoReg && cursoReg.fechaFin) {
-          const fechaFin = parseDateOnlyAsLocal(cursoReg.fechaFin);
-          if (fechaFin && !Number.isNaN(fechaFin.getTime())) {
-            fechasFinCursos.push(fechaFin);
-          }
-        }
-      });
-
-      // Solo cuentan cursos creados en Gestión de cursos (inscripciones regulares activas)
-      const cursosAsignados = inscripcionesRegularesActivas.length;
-      const tieneCursoAsignado = cursosAsignados > 0;
-      const tieneCursoFinalizado = fechasFinCursos.some(fecha => fecha <= fechaActual);
-      const fechaFinMasReciente = fechasFinCursos.length > 0
-        ? new Date(Math.max(...fechasFinCursos.map(f => f.getTime())))
-        : null;
-      
-      // Verificar si tiene evidencias DESPUÉS de la fecha de fin del curso
-      let evidenciasDesFechaFin = [];
-      if (fechaFinMasReciente) {
-        evidenciasDesFechaFin = evidenciasFormador.filter(e => {
-          const fechaEvidencia = parseDateOnlyAsLocal(e.fechaCarga);
-          if (!fechaEvidencia) return false;
-          return fechaEvidencia >= fechaFinMasReciente;
-        });
-      }
-      
-      // Verificar si tiene evidencias este mes
-      const evidenciasEsteMes = evidenciasFormador.filter(e => {
-        const fechaEvidencia = new Date(e.fechaCarga);
-        return fechaEvidencia >= primerDiaMes;
-      });
-
-      // Contar estados de evidencias
-      const evidenciasPendientes = evidenciasFormador.filter(e => e.estado === 'pendiente').length;
-      const evidenciasRechazadas = evidenciasFormador.filter(e => e.estado === 'rechazado').length;
-      const tieneEvidenciasEsteMes = evidenciasEsteMes.length > 0;
-
-      // Determinar el estado del formador con nueva lógica
-      let estado = 'al-dia';
-      let tieneEvidenciasPendientes = false;
-      let tieneEvidenciasRechazadas = false;
-
-      // PRIORIDAD 1: Si no tiene ningún curso asignado → AL DÍA
-      if (!tieneCursoAsignado) {
-        estado = 'al-dia';
-      } 
-      // PRIORIDAD 2: Evidencias en revisión
-      else if (evidenciasPendientes > 0) {
-        estado = 'pendiente-revision';
-        tieneEvidenciasPendientes = true;
-      } 
-      // PRIORIDAD 3: Evidencias rechazadas
-      else if (evidenciasRechazadas > 0) {
-        estado = 'rechazado';
-        tieneEvidenciasRechazadas = true;
-      } 
-      // PRIORIDAD 4: Curso finalizado sin evidencias
-      else if (tieneCursoFinalizado && evidenciasDesFechaFin.length === 0 && fechaFinMasReciente) {
-        estado = 'pendiente';
-      } 
-      // DEFAULT: Al día
-      else {
-        estado = 'al-dia';
-      }
-
-      // Calcular días sin subir evidencias (desde la fecha de fin del curso)
-      let diasSinEvidencia = null;
-      if (tieneCursoAsignado && tieneCursoFinalizado && evidenciasDesFechaFin.length === 0 && fechaFinMasReciente) {
-        diasSinEvidencia = Math.floor((fechaActual - fechaFinMasReciente) / (1000 * 60 * 60 * 24));
-      }
-
-      formadoresConProblemas.push({
-        ...formador,
-        cursos: cursosFormador,
-        cursosAsignados,
-        totalEvidencias: evidenciasFormador.length,
-        evidenciasEsteMes: evidenciasEsteMes.length,
-        evidenciasPendientes: evidenciasPendientes,
-        evidenciasAprobadas: evidenciasFormador.filter(e => e.estado === 'aprobado').length,
-        evidenciasRechazadas: evidenciasRechazadas,
-        tieneEvidenciasEsteMes,
-        tieneCursoAsignado,
-        tieneCursoFinalizado,
-        tieneEvidenciasPendientes,
-        tieneEvidenciasRechazadas,
-        diasSinEvidencia,
-        estado: estado
-      });
-    });
-
-    setFormadoresSinEvidencias(formadoresConProblemas);
+  const descargarReporte = async () => {
+    try {
+      setExportandoReporte(true);
+      await monitoriaService.downloadMonitoriaExcel();
+    } catch (error) {
+      console.error("Error al descargar reporte:", error);
+      alert(error.message);
+    } finally {
+      setExportandoReporte(false);
+    }
   };
 
-  const formadoresFiltrados = formadoresSinEvidencias.filter(f => {
+  const formadoresFiltrados = formadoresMonitoria.filter(f => {
     if (filtro === "todos") return true;
+    if (filtro === "pendientes") return f.estado === 'pendiente';
     if (filtro === "al-dia") return f.estado === 'al-dia';
     if (filtro === "pendiente-revision") return f.estado === 'pendiente-revision';
-    if (filtro === "pendientes") return (f.estado === 'pendiente' || f.estado === 'rechazado') && (Number(f.cursosAsignados || 0) > 0);
-    if (filtro === "con-evidencia") return f.totalEvidencias > 0;
     return true;
   });
-
-  const obtenerNombreArea = (areaId) => {
-    const areas = {
-      1: "Tecnología",
-      2: "Recursos Humanos",
-      3: "Finanzas",
-      4: "Marketing",
-      5: "Operaciones"
-    };
-    return areas[areaId] || `Área ${areaId}`;
-  };
 
   if (!usuario) return <p>Cargando...</p>;
 
@@ -264,29 +73,37 @@ export default function Monitoria() {
       </header>
 
       <div className="monitoria-filtros">
-        <button 
+        <button
           className={`filtro-btn ${filtro === "todos" ? "activo" : ""}`}
           onClick={() => setFiltro("todos")}
         >
-          Todos ({formadoresSinEvidencias.length})
+          📋 Todos ({formadoresMonitoria.length})
         </button>
-        <button 
+        <button
           className={`filtro-btn ok ${filtro === "al-dia" ? "activo" : ""}`}
           onClick={() => setFiltro("al-dia")}
         >
-          ✅ Al día ({formadoresSinEvidencias.filter(f => f.estado === 'al-dia').length})
+          ✅ Al día ({formadoresMonitoria.filter(f => f.estado === 'al-dia').length})
         </button>
-        <button 
+        <button
           className={`filtro-btn revision ${filtro === "pendiente-revision" ? "activo" : ""}`}
           onClick={() => setFiltro("pendiente-revision")}
         >
-          🔍 Pendiente por revisión ({formadoresSinEvidencias.filter(f => f.estado === 'pendiente-revision').length})
+          🔍 En revisión ({formadoresMonitoria.filter(f => f.estado === 'pendiente-revision').length})
         </button>
-        <button 
+        <button
           className={`filtro-btn pendiente ${filtro === "pendientes" ? "activo" : ""}`}
           onClick={() => setFiltro("pendientes")}
         >
-          ⚠️ Pendientes ({formadoresSinEvidencias.filter(f => f.estado === 'pendiente' || f.estado === 'rechazado').length})
+          ⚠️ Pendientes reales ({formadoresMonitoria.filter(f => f.estado === 'pendiente').length})
+        </button>
+        <button
+          className="filtro-btn ok"
+          onClick={descargarReporte}
+          disabled={exportandoReporte || cargando}
+          style={{ marginLeft: "auto" }}
+        >
+          {exportandoReporte ? "Generando reporte..." : "📥 Descargar reporte"}
         </button>
       </div>
 
@@ -302,80 +119,7 @@ export default function Monitoria() {
         ) : (
           <div className="monitoria-grid">
             {formadoresFiltrados.map((formador) => (
-              <div 
-                key={formador.id} 
-                className={`monitoria-card ${formador.estado === 'pendiente' ? 'card-pendiente' : formador.estado === 'pendiente-revision' ? 'card-revision' : formador.estado === 'rechazado' ? 'card-rechazado' : 'card-ok'}`}
-              >
-                <div className="card-header">
-                  <div className="formador-avatar">
-                    {formador.nombre.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="formador-info">
-                    <h3>{formador.nombre} {formador.apellido}</h3>
-                    <p className="formador-email">{formador.email}</p>
-                  </div>
-                  <span className={`estado-badge ${formador.estado}`}>
-                    {formador.estado === 'al-dia' && '✅ Al día'}
-                    {formador.estado === 'pendiente-revision' && '🔍 Pendiente por revisión'}
-                    {formador.estado === 'rechazado' && '❌ Rechazado'}
-                    {formador.estado === 'pendiente' && '⚠️ Pendiente'}
-                  </span>
-                </div>
-
-                <div className="card-body">
-                  <div className="info-row">
-                    <span className="label">📍 Área:</span>
-                    <span className="value">{obtenerNombreArea(formador.areaId)}</span>
-                  </div>
-
-                  <div className="info-row">
-                    <span className="label">📚 Cursos asignados:</span>
-                    <span className="value">{formador.cursosAsignados ?? 0}</span>
-                  </div>
-
-                  <div className="info-row">
-                    <span className="label">📎 Total evidencias:</span>
-                    <span className="value">{formador.totalEvidencias}</span>
-                  </div>
-
-                  <div className="info-row">
-                    <span className="label">📅 Evidencias este mes:</span>
-                    <span className={`value ${formador.evidenciasEsteMes === 0 ? 'alerta' : ''}`}>
-                      {formador.evidenciasEsteMes}
-                    </span>
-                  </div>
-
-                  {formador.evidenciasPendientes > 0 && (
-                    <div className="info-row pendiente">
-                      <span className="label">⏳ Pendientes de revisión:</span>
-                      <span className="value">{formador.evidenciasPendientes}</span>
-                    </div>
-                  )}
-
-                  {formador.evidenciasRechazadas > 0 && (
-                    <div className="info-row rechazado">
-                      <span className="label">❌ Evidencias rechazadas:</span>
-                      <span className="value">{formador.evidenciasRechazadas}</span>
-                    </div>
-                  )}
-
-                  {formador.diasSinEvidencia !== null && (
-                    <div className="info-row alerta">
-                      <span className="label">⚠️ Días sin evidencia:</span>
-                      <span className="value">{formador.diasSinEvidencia} días</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="card-footer">
-                  <button 
-                    className="btn-detalle"
-                    onClick={() => navigate(`/detalles-formador/${formador.id}`)}
-                  >
-                    Ver detalles
-                  </button>
-                </div>
-              </div>
+              <MonitoriaCard key={formador.id} formador={formador} />
             ))}
           </div>
         )}
@@ -385,30 +129,18 @@ export default function Monitoria() {
         <h3>📈 Resumen General</h3>
         <div className="resumen-stats">
           <div className="stat-item">
-            <span className="stat-number">{formadoresSinEvidencias.length}</span>
+            <span className="stat-number">{formadoresMonitoria.length}</span>
             <span className="stat-label">Total Formadores</span>
-          </div>
-          <div className="stat-item ok">
-            <span className="stat-number">
-              {formadoresSinEvidencias.filter(f => f.estado === 'al-dia').length}
-            </span>
-            <span className="stat-label">Al día</span>
-          </div>
-          <div className="stat-item revision">
-            <span className="stat-number">
-              {formadoresSinEvidencias.filter(f => f.estado === 'pendiente-revision').length}
-            </span>
-            <span className="stat-label">Pendiente por revisión</span>
           </div>
           <div className="stat-item pendiente">
             <span className="stat-number">
-              {formadoresSinEvidencias.filter(f => f.estado === 'pendiente' || f.estado === 'rechazado').length}
+              {formadoresMonitoria.filter(f => f.estado === 'pendiente').length}
             </span>
             <span className="stat-label">Pendientes</span>
           </div>
           <div className="stat-item">
             <span className="stat-number">
-              {formadoresSinEvidencias.reduce((acc, f) => acc + f.evidenciasPendientes, 0)}
+              {formadoresMonitoria.reduce((acc, f) => acc + f.evidenciasPendientes, 0)}
             </span>
             <span className="stat-label">Evidencias por revisar</span>
           </div>

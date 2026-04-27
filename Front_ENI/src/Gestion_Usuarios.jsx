@@ -213,14 +213,14 @@ export default function GestionUsuarios() {
               <span className="stat-badge">
                 Total Formadores: {usuarios.filter(u => u.rol === 'Formador').length}
               </span>
-              <span className="stat-badge" style={{
+              {/* <span className="stat-badge" style={{
                 background: totalFormadoresConClaveTemporal > 0
                   ? 'linear-gradient(135deg, #ffb300, #f57c00)'
                   : 'linear-gradient(135deg, #2e7d32, #1b5e20)',
                 color: '#fff'
               }}>
                 Clave temporal: {totalFormadoresConClaveTemporal}
-              </span>
+              </span> */}
             </div>
           </div>
 
@@ -262,7 +262,7 @@ export default function GestionUsuarios() {
                   }}>
                     <th style={{ padding: '1.3rem 1.5rem', color: '#a8d8ff' }}>👨‍🏫 Formador</th>
                     <th style={{ padding: '1.3rem 1.5rem', color: '#a8d8ff' }}>📧 Email</th>
-                    <th style={{ padding: '1.3rem 1rem', color: '#a8d8ff', textAlign: 'center' }}>🔐 Estado clave</th>
+                    <th style={{ padding: '1.3rem 1rem', color: '#a8d8ff', textAlign: 'center' }}>🔐 Estado clave / evidencia</th>
                     <th style={{ padding: '1.3rem 1.5rem', color: '#a8d8ff', textAlign: 'center' }}>⚙️ Acciones</th>
                   </tr>
                 </thead>
@@ -292,26 +292,86 @@ export default function GestionUsuarios() {
                         {usuarioItem.email}
                       </td>
                       <td style={{ padding: '1.2rem 1rem', textAlign: 'center' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: '140px',
-                          padding: '0.45rem 0.8rem',
-                          borderRadius: '999px',
-                          fontSize: '0.82rem',
-                          fontWeight: '700',
-                          letterSpacing: '0.02em',
-                          color: usuarioItem.requiereCambioPassword ? '#fff3cd' : '#d7ffe1',
-                          background: usuarioItem.requiereCambioPassword
-                            ? 'rgba(245, 124, 0, 0.22)'
-                            : 'rgba(56, 142, 60, 0.22)',
-                          border: usuarioItem.requiereCambioPassword
-                            ? '1px solid rgba(255, 179, 0, 0.45)'
-                            : '1px solid rgba(76, 175, 80, 0.45)'
-                        }}>
-                          {usuarioItem.requiereCambioPassword ? 'Temporal pendiente' : 'Actualizada'}
-                        </span>
+                        <div style={{ display: 'grid', gap: '0.45rem', justifyItems: 'center' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: '140px',
+                            padding: '0.45rem 0.8rem',
+                            borderRadius: '999px',
+                            fontSize: '0.82rem',
+                            fontWeight: '700',
+                            letterSpacing: '0.02em',
+                            color: usuarioItem.requiereCambioPassword ? '#fff3cd' : '#d7ffe1',
+                            background: usuarioItem.requiereCambioPassword
+                              ? 'rgba(245, 124, 0, 0.22)'
+                              : 'rgba(56, 142, 60, 0.22)',
+                            border: usuarioItem.requiereCambioPassword
+                              ? '1px solid rgba(255, 179, 0, 0.45)'
+                              : '1px solid rgba(76, 175, 80, 0.45)'
+                          }}>
+                            {usuarioItem.requiereCambioPassword ? 'Temporal pendiente' : 'Actualizada'}
+                          </span>
+
+                          {usuarioItem.estadoEvidencia && usuarioItem.estadoEvidencia !== 'sin_curso' && (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minWidth: '140px',
+                              padding: '0.45rem 0.8rem',
+                              borderRadius: '999px',
+                              fontSize: '0.78rem',
+                              fontWeight: '700',
+                              letterSpacing: '0.02em',
+                              color: usuarioItem.estadoEvidencia === 'pendiente'
+                                ? '#ffd7d7'
+                                : usuarioItem.estadoEvidencia === 'pendiente_revision'
+                                  ? '#fff3cd'
+                                  : usuarioItem.estadoEvidencia === 'rechazado'
+                                    ? '#ffd7d7'
+                                    : '#d7ffe1',
+                              background: usuarioItem.estadoEvidencia === 'pendiente'
+                                ? 'rgba(198, 40, 40, 0.24)'
+                                : usuarioItem.estadoEvidencia === 'pendiente_revision'
+                                  ? 'rgba(245, 124, 0, 0.22)'
+                                  : usuarioItem.estadoEvidencia === 'rechazado'
+                                    ? 'rgba(198, 40, 40, 0.24)'
+                                    : 'rgba(56, 142, 60, 0.22)',
+                              border: usuarioItem.estadoEvidencia === 'pendiente'
+                                ? '1px solid rgba(229, 115, 115, 0.45)'
+                                : usuarioItem.estadoEvidencia === 'pendiente_revision'
+                                  ? '1px solid rgba(255, 179, 0, 0.45)'
+                                  : usuarioItem.estadoEvidencia === 'rechazado'
+                                    ? '1px solid rgba(229, 115, 115, 0.45)'
+                                    : '1px solid rgba(76, 175, 80, 0.45)'
+                            }}>
+                              {usuarioItem.estadoEvidencia === 'pendiente' && `Pendiente evidencia${usuarioItem.diasEnDeuda !== null && usuarioItem.diasEnDeuda !== undefined ? ` (${usuarioItem.diasEnDeuda} días)` : ''}`}
+                              {usuarioItem.estadoEvidencia === 'pendiente_revision' && 'Evidencia en revisión'}
+                              {usuarioItem.estadoEvidencia === 'rechazado' && 'Evidencia rechazada'}
+                              {usuarioItem.estadoEvidencia === 'al-dia' && 'Evidencia al día'}
+                            </span>
+                          )}
+
+                          {usuarioItem.estadoEvidencia === 'sin_curso' && (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minWidth: '140px',
+                              padding: '0.45rem 0.8rem',
+                              borderRadius: '999px',
+                              fontSize: '0.78rem',
+                              fontWeight: '700',
+                              color: '#d7e3f0',
+                              background: 'rgba(96, 125, 139, 0.22)',
+                              border: '1px solid rgba(96, 125, 139, 0.45)'
+                            }}>
+                              Sin curso asignado
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '1.2rem 1.5rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '0.7rem', justifyContent: 'center' }}>

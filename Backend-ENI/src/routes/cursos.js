@@ -1108,4 +1108,82 @@ router.delete("/:id", verifyAdmin, async (req, res) => {
   }
 });
 
+// POST /api/cursos/notificar-transferencia - Notificar instructores sobre transferencia de conocimiento
+router.post("/notificar-transferencia", async (req, res) => {
+  try {
+    console.log("=== NOTIFICAR TRANSFERENCIA DE CONOCIMIENTO ===");
+    
+    // Buscar cursos que han terminado hoy y aún no han recibido notificación
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    const manana = new Date(hoy);
+    manana.setDate(manana.getDate() + 1);
+
+    const cursosTerminados = await Curso.findAll({
+      where: {
+        fechaFin: {
+          [Op.gte]: hoy,
+          [Op.lt]: manana,
+        },
+        notificacionTransferenciaEnviada: false,
+        usuarioId: { [Op.not]: null },
+      },
+      include: [
+        {
+          model: Usuario,
+          as: "creador",
+          attributes: ["id", "nombre", "email"],
+        },
+      ],
+    });
+
+    console.log(`Cursos terminados hoy: ${cursosTerminados.length}`);
+
+    if (cursosTerminados.length === 0) {
+      return res.json({
+        mensaje: "No hay cursos que terminen hoy",
+        cursosNotificados: 0,
+      });
+    }
+
+    let cursosNotificados = 0;
+
+    // Notificar a cada instructor
+    for (const curso of cursosTerminados) {
+      if (curso.usuarioId) {
+        try {
+          await Notificacion.create({
+            usuarioId: curso.usuarioId,
+            asunto: "⏰ Transferencia de Conocimiento",
+            mensaje: `El curso "${curso.nombre}" ha terminado. A partir de hoy tienes 3 meses para presentar la transferencia de conocimiento.`,
+            areaId: curso.areaId || null,
+            leida: false,
+          });
+
+          // Marcar como notificado
+          await curso.update({ notificacionTransferenciaEnviada: true });
+          cursosNotificados++;
+
+          console.log(`✅ Notificación enviada al instructor ${curso.usuarioId} del curso ${curso.nombre}`);
+        } catch (error) {
+          console.error(`Error notificando instructor ${curso.usuarioId}:`, error.message);
+        }
+      }
+    }
+
+    res.json({
+      mensaje: "Notificaciones de transferencia enviadas",
+      cursosNotificados,
+      total: cursosTerminados.length,
+    });
+  } catch (error) {
+    console.error("Error al notificar transferencia:", error);
+    res.status(500).json({
+      error: "Error al enviar notificaciones",
+      detalles: error.message,
+    });
+  }
+});
+
 export default router;

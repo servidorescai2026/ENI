@@ -7,8 +7,8 @@ import inscripcionRoutes from "./routes/inscripciones.js";
 import archivoRoutes from "./routes/archivos.js";
 import { conectarDB, sequelize } from "./database/config.js";
 import areaRoutes from "./routes/areas.js";
-import evidenciasRoutes from "./routes/evidencias.js";
 import inscripcionesCapacitacionRoutes from "./routes/inscripciones_capacitacion.js";
+import { configurarCronJobs } from "./services/cronJobs.js";
 
 dotenv.config();
 
@@ -100,7 +100,6 @@ app.use("/api/cursos", cursoRoutes);
 app.use("/api/inscripciones", inscripcionRoutes);
 app.use("/api/inscripciones-capacitacion", inscripcionesCapacitacionRoutes);
 app.use("/api/archivos", archivoRoutes);
-app.use("/api/evidencias", evidenciasRoutes);
 app.get("/", (req, res) => {
   res.json({ mensaje: "API ENI lista 🚀 con MySQL" });
 });

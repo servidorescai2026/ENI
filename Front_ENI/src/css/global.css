@@ -43,6 +43,25 @@ body {
   animation: toastSlideIn 0.28s ease-out;
 }
 
+.input-password {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 15 10px;
+}
+
+.input-password input {
+  flex: 1;
+  border: none;
+  padding: 10px 0;
+  outline: none;
+}
+
+.input-password span {
+  cursor: pointer;
+  font-size: 18px;
+}
+
 .toast-aprobacion-icon {
   display: inline-flex;
   align-items: center;
@@ -132,6 +151,7 @@ body {
 }
 
 @keyframes helpPulse {
+
   0%,
   100% {
     box-shadow: 0 12px 30px rgba(35, 240, 175, 0.35);
@@ -559,7 +579,9 @@ footer a:hover {
   margin-bottom: 0.3rem;
 }
 
-.welcome-section p { opacity: 0.85; }
+.welcome-section p {
+  opacity: 0.85;
+}
 
 .cursos-grid {
   display: grid;
@@ -569,11 +591,11 @@ footer a:hover {
 }
 
 .curso-card {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   padding: 1.6rem;
-  box-shadow: 0 10px 30px rgba(10,20,60,0.35);
-  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 10px 30px rgba(10, 20, 60, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -581,7 +603,10 @@ footer a:hover {
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.curso-card:hover { transform: translateY(-6px); box-shadow: 0 18px 45px rgba(10,20,60,0.45); }
+.curso-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 45px rgba(10, 20, 60, 0.45);
+}
 
 .curso-header {
   display: flex;
@@ -591,10 +616,14 @@ footer a:hover {
   margin-bottom: 0.6rem;
 }
 
-.curso-header h4 { font-size: 1.2rem; font-weight: 800; color: #fff; }
+.curso-header h4 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+}
 
 .nivel-badge {
-  background: linear-gradient(90deg,#ff8a00,#ffca28);
+  background: linear-gradient(90deg, #ff8a00, #ffca28);
   color: #1a1a1a;
   padding: 6px 10px;
   border-radius: 14px;
@@ -603,16 +632,36 @@ footer a:hover {
   text-transform: uppercase;
 }
 
-.curso-body .descripcion { color: rgba(255,255,255,0.9); margin-bottom: 0.6rem; }
+.curso-body .descripcion {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.6rem;
+}
 
-.curso-info { display:flex; gap:12px; flex-wrap:wrap; align-items:center; color: rgba(255,255,255,0.9); margin-bottom: 1rem; }
-.curso-info span { font-size: 0.95rem; }
-.curso-info strong { color:#fff; margin-right:6px; }
+.curso-info {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 1rem;
+}
 
-.curso-actions { margin-top: auto; }
+.curso-info span {
+  font-size: 0.95rem;
+}
+
+.curso-info strong {
+  color: #fff;
+  margin-right: 6px;
+}
+
+.curso-actions {
+  margin-top: auto;
+}
+
 .btn-inscribirse {
   width: 100%;
-  background: linear-gradient(90deg,#2ecc71,#27ae60);
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
   color: #fff;
   padding: 14px;
   border-radius: 10px;
@@ -621,17 +670,43 @@ footer a:hover {
   cursor: pointer;
 }
 
-.btn-inscribirse:disabled { opacity: 0.8; cursor: not-allowed; }
+.btn-inscribirse:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
 
-.enrolled-text { color: #b7ffb4; font-weight:700; }
+.enrolled-text {
+  color: #b7ffb4;
+  font-weight: 700;
+}
 
-.mis-cursos-section { margin-top: 2.2rem; }
-.inscripciones-list { display:flex; flex-direction:column; gap:10px; }
-.inscripcion-item { background: rgba(255,255,255,0.04); padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; }
+.mis-cursos-section {
+  margin-top: 2.2rem;
+}
+
+.inscripciones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inscripcion-item {
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
 @media (max-width: 900px) {
-  .cursos-grid { grid-template-columns: 1fr; }
-  .cursos-disponibles-container { padding: 1.5rem; }
+  .cursos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cursos-disponibles-container {
+    padding: 1.5rem;
+  }
 }
 
 
@@ -2686,7 +2761,7 @@ footer a:hover {
 }
 
 .btn-editar {
- 
+
   background: linear-gradient(135deg, #2196f3, #1976d2);
   color: #fff;
   border: none;
@@ -4804,9 +4879,12 @@ footer a:hover {
 }
 
 @keyframes pulse-badge {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.1);
   }

@@ -1,24 +1,95 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiUrl } from "./config/api";
 
 export default function SubirEvidencias() {
   const navigate = useNavigate();
-  const [descripcion, setDescripcion] = useState("");
-  const [nombreCarpeta, setNombreCarpeta] = useState("");
-  const [nombreCarpetaPrincipal, setNombreCarpetaPrincipal] = useState("");
-  const [archivos, setArchivos] = useState([{ id: 1, file: null }]);
   const [estado, setEstado] = useState("");
   const [enviando, setEnviando] = useState(false);
 
+  const [formulario, setFormulario] = useState({
+    documento: "",
+    nombre: "",
+    codRegional: "",
+    regional: "",
+    codCentro: "",
+    centroFormacion: "",
+    descripcion: "",
+  });
+
+  useEffect(() => {
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+    // Si no hay datos, hace fetch al endpoint de perfil
+    if (!usuario.documento || !usuario.nombre) {
+      const token = localStorage.getItem("token");
+      fetch(apiUrl("/api/usuarios/perfil"), {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("=== DATOS DEL SERVIDOR /perfil ===");
+          console.log("Respuesta completa:", data);
+          console.log("Documento:", data.documento);
+          console.log("Nombre:", data.nombre);
+          console.log("Regional ID:", data.regionalId);
+          console.log("Regional Nombre:", data.regionalNombre);
+          console.log("Centro ID:", data.centroFormacionId);
+          console.log("Centro Nombre:", data.centroNombre);
+
+          if (data.documento || data.id) {
+            // Mapear los campos para mantener compatibilidad con el formato del login
+            const usuarioActualizado = {
+              ...data,
+              regionalNor: data.regionalNombre,
+              centroForm: data.centroFormacionId,
+              centroNoml: data.centroNombre
+            };
+            localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+            cargarFormulario(usuarioActualizado);
+          }
+        })
+        .catch(error => console.error("Error al obtener perfil:", error));
+    } else {
+      cargarFormulario(usuario);
+    }
+  }, []);
+
+  const cargarFormulario = (usuario) => {
+    // Normalizar - aceptar tanto del login (regionalNor) como del /perfil (regionalNombre)
+    const regionalNom = usuario.regionalNombre || usuario.regionalNor || "";
+    const centroId = usuario.centroFormacionId || usuario.centroForm || "";
+    const centroNom = usuario.centroNombre || usuario.centroNoml || "";
+
+    console.log("Cargando formulario con:", {
+      documento: usuario.documento,
+      nombre: usuario.nombre,
+      regionalId: usuario.regionalId,
+      regionalNombre: regionalNom,
+      centroFormacionId: centroId,
+      centroNombre: centroNom,
+    });
+
+    setFormulario({
+      documento: usuario.documento || "",
+      nombre: usuario.nombre || "",
+      codRegional: usuario.regionalId || "",
+      regional: regionalNom,
+      codCentro: centroId,
+      centroFormacion: centroNom,
+      descripcion: "",
+    });
+  };
+
   const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
   if (usuario.rol === "Administrador") {
     return (
       <div className="notificacion-page">
         <div className="notificacion-card">
-          <h2 className="notificacion-title">📎 Subir evidencias</h2>
+          <h2 className="notificacion-title">📎 Reporte</h2>
           <p className="notificacion-subtitle">
-            Los administradores no pueden subir evidencias. Las evidencias son enviadas por los usuarios para que usted las revise.
+            Los administradores no diligencian reportes.
           </p>
           <button
             type="button"
@@ -32,49 +103,36 @@ export default function SubirEvidencias() {
     );
   }
 
-  const subirEvidencia = async () => {
+  const enviarReporte = async () => {
     const token = localStorage.getItem("token");
-    const archivosConFile = archivos.filter((a) => a.file);
-
-    if (archivosConFile.length === 0) {
-      setEstado("⚠️ Debes seleccionar al menos un archivo PDF");
-      return;
-    }
 
     setEnviando(true);
     setEstado("");
 
     try {
-      const formData = new FormData();
-      formData.append("descripcion", descripcion);
-      formData.append("nombreCarpeta", nombreCarpeta);
-      formData.append("nombreCarpetaPrincipal", nombreCarpetaPrincipal);
-      archivosConFile.forEach((a) => {
-        formData.append("archivos", a.file);
-      });
-
-      const res = await fetch(apiUrl("/api/usuarios/subir-evidencia"), {
+      const res = await fetch(apiUrl("/api/usuarios/reportes"), {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: formData,
+        body: JSON.stringify(formulario),
       });
 
       const data = await res.json();
 
       if (res.ok) {
         setEstado(`✅ ${data.mensaje}`);
-        setDescripcion("");
-        setNombreCarpeta("");
-        setNombreCarpetaPrincipal("");
-        setArchivos([{ id: Date.now(), file: null }]);
+        setFormulario((prev) => ({
+          ...prev,
+          descripcion: "",
+        }));
       } else {
-        setEstado(`❌ ${data.mensaje || "Error al subir evidencia"}`);
+        setEstado(`❌ ${data.mensaje || "Error al enviar el reporte"}`);
       }
-    } catch (err) {
-      console.error(err);
-      setEstado("⚠️ Error de conexión con el servidor");
+    } catch (error) {
+      console.error("Error al enviar reporte:", error);
+      setEstado("❌ Error al enviar el reporte");
     } finally {
       setEnviando(false);
     }
@@ -83,102 +141,70 @@ export default function SubirEvidencias() {
   return (
     <div className="notificacion-page">
       <div className="notificacion-card">
-        <h2 className="notificacion-title">📎 Subir evidencias</h2>
+        <h2 className="notificacion-title">📎 Reporte de Información</h2>
         <p className="notificacion-subtitle">
-          Sube tus evidencias en formato PDF. El administrador recibirá una notificación y podrá revisarlas.
+          Información del instructor cargada automáticamente.
         </p>
 
-        <div className="form-group" style={{ marginTop: "1rem" }}>
-          <label>Descripción (opcional)</label>
-          <textarea
-            className="input-control textarea-control"
-            placeholder="Añade una descripción o comentario sobre las evidencias..."
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            rows={3}
-          />
-        </div>
+        <div className="form-group">
+          <label>
+            Para cargar tu evidencia entra a este enlace y busca tu nombre:
+          </label>
 
-        <div className="form-group" style={{ marginTop: "1rem" }}>
-          <label>Nombre de carpeta en Drive (opcional)</label>
           <input
             className="input-control"
-            type="text"
-            placeholder="Ej: Evidencias_Alejandro_03032026"
-            value={nombreCarpeta}
-            onChange={(e) => setNombreCarpeta(e.target.value)}
-            maxLength={120}
+            value="https://drive.google.com/drive/u/0/folders/1Bx5FZ7aEECGqisCFeeNcozHSjJz5P-IV"
+            readOnly
           />
-        </div>
 
-        <div className="form-group" style={{ marginTop: "1rem" }}>
-          <label>Carpeta principal en Drive (opcional)</label>
-          <input
-            className="input-control"
-            type="text"
-            placeholder="Ej: ENI_Evidencias"
-            value={nombreCarpetaPrincipal}
-            onChange={(e) => setNombreCarpetaPrincipal(e.target.value)}
-            maxLength={120}
-          />
+          <button
+            onClick={() => window.open("https://drive.google.com/drive/u/0/folders/1Bx5FZ7aEECGqisCFeeNcozHSjJz5P-IV", "_blank")}
+          >
+            Abrir enlace
+          </button>
+        </div>
+        {/* CAMPOS AUTOMÁTICOS */}
+        <div className="form-group">
+          <label>Documento</label>
+          <input className="input-control" value={formulario.documento} readOnly />
         </div>
 
         <div className="form-group">
-          <label>Archivos PDF (máx. 5)</label>
-          {archivos.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <input
-                className="input-control"
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => {
-                  const file = e.target.files[0] || null;
-                  setArchivos((prev) =>
-                    prev.map((a) => (a.id === item.id ? { ...a, file } : a))
-                  );
-                }}
-              />
-              {item.file && (
-                <span style={{ fontSize: "0.8rem" }}>{item.file.name}</span>
-              )}
-              <button
-                type="button"
-                className="btn-anim btn-cerrar"
-                onClick={() =>
-                  setArchivos((prev) => prev.filter((a) => a.id !== item.id))
-                }
-              >
-                Quitar
-              </button>
-            </div>
-          ))}
-          {archivos.length < 5 && (
-            <button
-              type="button"
-              className="btn-anim"
-              onClick={() => {
-                setArchivos((prev) => [
-                  ...prev,
-                  { id: Date.now() + Math.random(), file: null },
-                ]);
-              }}
-            >
-              + Agregar otro PDF
-            </button>
-          )}
-          {archivos.filter((a) => a.file).length > 0 && (
-            <p style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
-              Archivos: {archivos.filter((a) => a.file).length} / 5 seleccionados
-            </p>
-          )}
+          <label>Nombre</label>
+          <input className="input-control" value={formulario.nombre} readOnly />
+        </div>
+
+        <div className="form-group">
+          <label>Código Regional</label>
+          <input className="input-control" value={formulario.codRegional} readOnly />
+        </div>
+
+        <div className="form-group">
+          <label>Regional</label>
+          <input className="input-control" value={formulario.regional} readOnly />
+        </div>
+
+        <div className="form-group">
+          <label>Código Centro</label>
+          <input className="input-control" value={formulario.codCentro} readOnly />
+        </div>
+
+        <div className="form-group">
+          <label>Centro de Formación</label>
+          <input className="input-control" value={formulario.centroFormacion} readOnly />
+        </div>
+
+        {/* CAMPO EDITABLE */}
+        <div className="form-group">
+          <label>Descripción</label>
+          <textarea
+            className="input-control textarea-control"
+            rows={3}
+            value={formulario.descripcion}
+            onChange={(e) =>
+              setFormulario({ ...formulario, descripcion: e.target.value })
+            }
+          />
         </div>
 
         {estado && <p className="notificacion-estado">{estado}</p>}
@@ -186,16 +212,17 @@ export default function SubirEvidencias() {
         <div className="notificacion-actions" style={{ marginTop: "1.5rem" }}>
           <button
             className="btn-panel"
-            onClick={() => navigate("/usuario")}>
+            onClick={() => navigate("/usuario")}
+          >
             🏠 Panel de Usuario
           </button>
+
           <button
             className="btn-anim btn-notificacion"
-            type="button"
-            onClick={subirEvidencia}
+            onClick={enviarReporte}
             disabled={enviando}
           >
-            {enviando ? "Subiendo…" : "Subir evidencias"}
+            {enviando ? "Enviando…" : "Enviar reporte"}
           </button>
         </div>
       </div>

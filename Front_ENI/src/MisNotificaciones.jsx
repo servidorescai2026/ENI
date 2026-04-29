@@ -114,6 +114,12 @@ export default function MisNotificaciones() {
   const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
   const esAdmin = usuario.rol === "Administrador";
 
+  const getArchivoUrl = (ruta) => {
+    if (!ruta) return "";
+    if (/^https?:\/\//i.test(ruta)) return ruta;
+    return uploadsUrl(ruta);
+  };
+
   const parseArchivos = (archivosRaw) => {
     if (!archivosRaw) return { files: [], folderLink: null };
     try {

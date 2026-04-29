@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as monitoriaService from "./services/Monitoria/monitoriaService";
 import MonitoriaCard from "./components/Monitoria/MonitoriaCard";
+import { apiUrl } from "./config/api";
 
 export default function Monitoria() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function Monitoria() {
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState("pendientes"); // todos, al-dia, pendiente-revision, pendientes
   const [exportandoReporte, setExportandoReporte] = useState(false);
+  const [notificaciones, setNotificaciones] = useState([]);
 
   useEffect(() => {
     const datosUsuario = JSON.parse(localStorage.getItem("usuario"));
@@ -22,8 +24,22 @@ export default function Monitoria() {
     } else {
       setUsuario(datosUsuario);
       cargarDatos();
+      cargarNotificaciones();
     }
   }, [navigate]);
+
+  const cargarNotificaciones = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(apiUrl("/api/usuarios/mis-notificaciones"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setNotificaciones(data.notificaciones || []);
+    } catch (error) {
+      console.error("Error al cargar notificaciones:", error);
+    }
+  };
 
   const cargarDatos = async () => {
     setCargando(true);
@@ -35,6 +51,65 @@ export default function Monitoria() {
       alert("No se pudieron cargar los datos de monitoría");
     } finally {
       setCargando(false);
+    }
+  };
+
+  const marcarNotificacionComoLeida = async (notificacionId) => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log(`[MONITORIA-FE] Marcando notificación ${notificacionId} como leída`);
+      
+      const res = await fetch(
+        apiUrl(`/api/usuarios/notificaciones/${notificacionId}/marcar-leida`),
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Error al marcar notificación como leída");
+        return;
+      }
+
+      console.log(`[MONITORIA-FE] Notificación ${notificacionId} marcada exitosamente`);
+
+      // Actualizar notificaciones locales
+      setNotificaciones((prev) =>
+        prev.map((n) => (n.id === notificacionId ? { ...n, leida: 1 } : n))
+      );
+
+      // Pequeño delay para asegurar que el backend procesó todo
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Recargar datos de monitoría para reflejar cambios
+      console.log(`[MONITORIA-FE] Recargando datos de monitoría...`);
+      await cargarDatos();
+      console.log(`[MONITORIA-FE] Datos de monitoría recargados`);
+    } catch (error) {
+      console.error("Error al marcar notificación:", error);
+    }
+  };
+
+  const marcarEvidenciasComLeidas = async (formadorId) => {
+    // Buscar todas las notificaciones de este formador
+    console.log(`[MONITORIA-FE] Buscando notificaciones del formador ${formadorId}`);
+    const notificacionesFormador = notificaciones.filter((n) => {
+      try {
+        const payload = JSON.parse(n.archivos || "{}");
+        const esDelFormador = payload.sourceUserId === formadorId && !n.leida;
+        console.log(`[MONITORIA-FE] Notificación ${n.id}: sourceUserId=${payload.sourceUserId}, leida=${n.leida}, esDelFormador=${esDelFormador}`);
+        return esDelFormador;
+      } catch {
+        return false;
+      }
+    });
+
+    console.log(`[MONITORIA-FE] Se encontraron ${notificacionesFormador.length} notificaciones sin leer para el formador ${formadorId}`);
+
+    // Marcar cada una como leída en secuencia
+    for (const notif of notificacionesFormador) {
+      await marcarNotificacionComoLeida(notif.id);
     }
   };
 
@@ -119,7 +194,11 @@ export default function Monitoria() {
         ) : (
           <div className="monitoria-grid">
             {formadoresFiltrados.map((formador) => (
-              <MonitoriaCard key={formador.id} formador={formador} />
+              <MonitoriaCard 
+                key={formador.id} 
+                formador={formador}
+                onMarcarEvidenciasLeidas={() => marcarEvidenciasComLeidas(formador.id)}
+              />
             ))}
           </div>
         )}

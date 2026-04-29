@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { abbreviateAreaName } from "../../utils/areaLabel";
 
-const MonitoriaCard = ({ formador }) => {
+const MonitoriaCard = ({ formador, onMarcarEvidenciasLeidas }) => {
   const navigate = useNavigate();
+  const [marcando, setMarcando] = useState(false);
 
   const getStatusLabel = (estado) => {
     switch (estado) {
@@ -21,6 +22,16 @@ const MonitoriaCard = ({ formador }) => {
       case 'pendiente-revision': return 'card-revision';
       case 'rechazado': return 'card-rechazado';
       default: return 'card-ok';
+    }
+  };
+
+  const handleMarcarLeidas = async () => {
+    if (!onMarcarEvidenciasLeidas) return;
+    setMarcando(true);
+    try {
+      await onMarcarEvidenciasLeidas();
+    } finally {
+      setMarcando(false);
     }
   };
 
@@ -89,6 +100,16 @@ const MonitoriaCard = ({ formador }) => {
       </div>
 
       <div className="card-footer">
+        {formador.estado === 'pendiente-revision' && formador.evidenciasPendientes > 0 && (
+          <button
+            className="btn-guardar"
+            onClick={handleMarcarLeidas}
+            disabled={marcando}
+            title="Marcar evidencias como revisadas y cambiar estado a Al día"
+          >
+            {marcando ? "⏳ Procesando..." : "✅ Aprobar evidencias"}
+          </button>
+        )}
         <button
           className="btn-detalle"
           onClick={() => navigate(`/detalles-formador/${formador.id}`)}

@@ -11,6 +11,7 @@ import verifyToken from "../middleware/verifyToken.js";
 import verifyAdmin from "../middleware/verifyAdmin.js";
 import multer from "multer";
 import ExcelJS from "exceljs";
+import xlsx from "xlsx";
 import * as monitoriaService from "../services/monitoriaService.js";
 
 const router = express.Router();

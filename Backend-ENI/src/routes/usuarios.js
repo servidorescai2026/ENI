@@ -1479,13 +1479,15 @@ router.post("/subir-evidencia", verifyToken, uploadEvidencias.array("archivos", 
       fechaCarga: new Date(),
     }));
 
-    await Archivo.bulkCreate(archivosDbPayload);
+    const archivosCreados = await Archivo.bulkCreate(archivosDbPayload);
+    const archivosIds = archivosCreados.map(a => a.id);
 
     const notificacionArchivosPayload = {
       sourceUserId: req.usuario.id,
       sourceUserName: nombreUsuario,
       folderLink: evidenciasLink || null,
       files: enlacesArchivos,
+      fileIds: archivosIds,
     };
 
     await Notificacion.bulkCreate(
@@ -1538,36 +1540,49 @@ router.post("/notificaciones/:id/marcar-leida", verifyToken, async (req, res) =>
       try {
         payload = notif.archivos ? JSON.parse(notif.archivos) : null;
       } catch (e) {
+        console.error("Error al parsear payload:", e);
         payload = null;
       }
 
       const sourceUserId = Number(payload?.sourceUserId);
+      const fileIds = Array.isArray(payload?.fileIds) ? payload.fileIds.filter(id => id).map(id => Number(id)) : [];
       const files = Array.isArray(payload?.files) ? payload.files.filter(Boolean) : [];
 
+      console.log(`[MARCAR-LEIDA] sourceUserId: ${sourceUserId}, fileIds: ${JSON.stringify(fileIds)}, files: ${JSON.stringify(files)}`);
+
       if (Number.isInteger(sourceUserId) && sourceUserId > 0) {
-        const where = {
+        let whereClause = {
           usuarioId: sourceUserId,
           estado: "pendiente",
         };
 
-        if (files.length > 0) {
-          where.ruta = { [Op.in]: files };
+        // Priorizar búsqueda por IDs, sino por rutas
+        if (fileIds.length > 0) {
+          whereClause.id = { [Op.in]: fileIds };
+        } else if (files.length > 0) {
+          whereClause.ruta = { [Op.in]: files };
         }
 
-        await Archivo.update(
+        console.log(`[MARCAR-LEIDA] whereClause:`, JSON.stringify(whereClause));
+
+        const updated = await Archivo.update(
           { estado: "aprobado" },
-          { where }
+          { where: whereClause }
         );
 
+        console.log(`[MARCAR-LEIDA] Archivos actualizados: ${updated[0]}`);
+
         // Notificar al formador que su evidencia fue aprobada por el administrador.
-        await Notificacion.create({
-          usuarioId: sourceUserId,
-          areaId: null,
-          asunto: "✅ Evidencia aprobada",
-          mensaje: "Su evidencia a sido aprobada por el administrador",
-          leida: 0,
-          creadaEn: new Date(),
-        });
+        if (updated[0] > 0) {
+          await Notificacion.create({
+            usuarioId: sourceUserId,
+            areaId: null,
+            asunto: "✅ Evidencia aprobada",
+            mensaje: "Su evidencia a sido aprobada por el administrador",
+            leida: 0,
+            creadaEn: new Date(),
+          });
+        }
       }
     }
 
@@ -1649,6 +1664,19 @@ router.post("/reportes", verifyToken, async (req, res) => {
 
     console.log("Reporte creado:", reporte.id);
 
+    const urlEvidencia = `https://drive.google.com/drive/u/0/folders/1Bx5FZ7aEECGqisCFeeNcozHSjJz5P-IV`;
+
+    const archivoEvidencia = await Archivo.create({
+      usuarioId,
+      nombre: `Reporte de evidencia - ${nombre || "Usuario"}`,
+      ruta: urlEvidencia,
+      tipo: "url",
+      tamaño: null,
+      descripcion: descripcion.trim(),
+      estado: "pendiente",
+      fechaCarga: new Date(),
+    });
+
     // Notificar a los administradores
     const administradores = await Usuario.findAll({
       where: { rol: "Administrador" },
@@ -1658,7 +1686,6 @@ router.post("/reportes", verifyToken, async (req, res) => {
 
     if (administradores.length > 0) {
       // Construir URLs para revisar el reporte y evidencia
-      const urlEvidencia = `https://drive.google.com/drive/u/0/folders/1Bx5FZ7aEECGqisCFeeNcozHSjJz5P-IV`;
       const mensajeNotificacion = `📋 NUEVO REPORTE\n\nInstructor: ${nombre}\nRegional: ${regional || "N/A"}\nCentro: ${centroFormacion || "N/A"}\n\nDescripción del reporte:\n"${descripcion}"\n\n📁 Carpeta de evidencias: ${urlEvidencia}\n\nRevisa el reporte en el panel de administración.`;
       
       await Promise.all(
@@ -1669,6 +1696,13 @@ router.post("/reportes", verifyToken, async (req, res) => {
             mensaje: mensajeNotificacion,
             areaId: null,
             leida: false,
+            archivos: JSON.stringify({
+              sourceUserId: usuarioId,
+              sourceUserName: nombre,
+              folderLink: urlEvidencia,
+              files: [urlEvidencia],
+              fileIds: [archivoEvidencia.id],
+            }),
           })
         )
       );

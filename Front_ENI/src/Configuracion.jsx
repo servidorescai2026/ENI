@@ -149,8 +149,8 @@ export default function Configuracion() {
       return;
     }
 
-    if (passwordForm.nuevaPassword === passwordActual) {
-      setMensajePassword("Debes elegir una contraseña diferente a la temporal predeterminada.");
+    if (passwordForm.nuevaPassword === passwordForm.passwordActual) {
+      setMensajePassword("Debes elegir una contraseña diferente a la actual.");
       return;
     }
 

@@ -43,33 +43,36 @@ export const buildMonitoriaStatus = (cursosAsignados = [], evidencias = [], fech
     });
 
     const evidenciasPendientes = evidencias.filter((evidencia) => String(evidencia.estado || "").toLowerCase() === "pendiente").length;
+    const evidenciasAprobadas = evidencias.filter((evidencia) => String(evidencia.estado || "").toLowerCase() === "aprobado").length;
     const evidenciasRechazadas = evidencias.filter((evidencia) => String(evidencia.estado || "").toLowerCase() === "rechazado").length;
 
-    let estado = "al-dia";
-    if (cursosAsignados.length === 0) {
-        estado = "al-dia";
-    } else if (evidenciasPendientes > 0) {
-        estado = "pendiente-revision";
-    } else if (evidenciasRechazadas > 0) {
-        estado = "rechazado";
-    } else if (fechaFinMasReciente && fechaFinMasReciente <= fechaActual) {
-        const tieneEvidenciaPosterior = evidencias.some((evidencia) => {
-            const fechaCarga = parseDateOnlyAsLocal(evidencia.fechaCarga);
-            return fechaCarga && fechaCarga >= fechaFinMasReciente;
-        });
+    console.log(`[MONITORIA] Usuario - Pendientes: ${evidenciasPendientes}, Aprobadas: ${evidenciasAprobadas}, Rechazadas: ${evidenciasRechazadas}, Total: ${evidencias.length}`);
 
-        if (!tieneEvidenciaPosterior) {
-            estado = "pendiente";
-        }
+    let estado = "al-dia";
+    
+    // Prioridad de estados:
+    if (cursosAsignados.length === 0) {
+        estado = "al-dia"; // Sin cursos, al día
+    } else if (evidenciasPendientes > 0) {
+        estado = "pendiente-revision"; // Hay evidencias esperando revisión
+    } else if (evidenciasRechazadas > 0) {
+        estado = "rechazado"; // Hay evidencias rechazadas
+    } else if (evidenciasAprobadas > 0) {
+        estado = "al-dia"; // Tiene evidencias aprobadas, está al día
+    } else if (fechaFinMasReciente && fechaFinMasReciente <= fechaActual) {
+        // El curso finalizó pero no hay evidencias
+        estado = "pendiente";
     }
 
-    const diasEnDeuda = (estado === "pendiente" || estado === "pendiente-revision") && fechaFinMasReciente
+    const diasSinEvidencia = (estado === "pendiente" || estado === "pendiente-revision") && fechaFinMasReciente
         ? Math.max(0, Math.floor((fechaActual - fechaFinMasReciente) / (1000 * 60 * 60 * 24)))
         : null;
 
+    console.log(`[MONITORIA] Estado final: ${estado}, diasSinEvidencia: ${diasSinEvidencia}`);
+
     return {
         estado,
-        diasEnDeuda,
+        diasSinEvidencia,
         totalEvidencias: evidencias.length,
         evidenciasEsteMes: evidenciasEsteMes.length,
         evidenciasPendientes,
@@ -85,6 +88,8 @@ export const getMonitoriaData = async () => {
     const evidencias = await Archivo.findAll();
     const cursos = await Curso.findAll();
     const areas = await Area.findAll();
+
+    console.log(`[MONITORIA-SERVICE] Total usuarios: ${usuarios.length}, Total evidencias: ${evidencias.length}, Total cursos: ${cursos.length}`);
 
     const relacionesCursos = await sequelize.query(
         "SELECT usuarioId, cursoId FROM cursos_usuarios",
@@ -110,11 +115,15 @@ export const getMonitoriaData = async () => {
 
     const evidenciasPorUsuario = new Map();
     evidencias.forEach((e) => {
-        if (!evidenciasPorUsuario.has(Number(e.usuarioId))) {
-            evidenciasPorUsuario.set(Number(e.usuarioId), []);
+        const usuarioId = Number(e.usuarioId);
+        console.log(`[MONITORIA-SERVICE] Archivo ID: ${e.id}, usuarioId: ${usuarioId}, estado: ${e.estado}`);
+        if (!evidenciasPorUsuario.has(usuarioId)) {
+            evidenciasPorUsuario.set(usuarioId, []);
         }
-        evidenciasPorUsuario.get(Number(e.usuarioId)).push(e.toJSON());
+        evidenciasPorUsuario.get(usuarioId).push(e.toJSON());
     });
+
+    console.log(`[MONITORIA-SERVICE] Mapa de evidencias por usuario: ${evidenciasPorUsuario.size} usuarios con evidencias`);
 
     return usuarios
         .map((usuario) => {
@@ -200,7 +209,7 @@ export const generateMonitoriaExcel = async () => {
             f.areaNombre,
             f.totalEvidencias,
             f.evidenciasEsteMes,
-            f.diasEnDeuda || 0,
+            f.diasSinEvidencia || 0,
             f.evidenciasPendientes,
             f.evidenciasRechazadas || 0,
             f.estado === 'pendiente' ? 'Pendiente' : f.estado === 'pendiente-revision' ? 'En Revisión' : f.estado === 'rechazado' ? 'Rechazado' : 'Al día'
@@ -211,7 +220,7 @@ export const generateMonitoriaExcel = async () => {
             cell.alignment = cellStyle.alignment;
         });
 
-        if (f.diasEnDeuda > 0) {
+        if (f.diasSinEvidencia > 0) {
             row.getCell(7).font = { color: { argb: "FF0000" }, bold: true };
         }
     });

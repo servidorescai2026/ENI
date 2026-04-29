@@ -15,7 +15,6 @@ import { Op } from "sequelize";
  * - Formato: "minuto hora día mes díaSemana"
  */
 export function configurarCronJobs() {
-  console.log("🔧 Configurando tareas programadas...");
   const horaNotificacion = "0 0"; // Cambiar aquí: "0 8" = 8:00 AM, "0 12" = 12:00 PM
   cron.schedule(`${horaNotificacion} * * *`, async () => {
     console.log("\n📅 [CRON] ⏰ Ejecutando: Notificar transferencia de conocimiento");
@@ -82,11 +81,6 @@ export function configurarCronJobs() {
       console.error("❌ [CRON] Error en tarea de transferencia:", error);
     }
   });
-
-  console.log("✅ Tareas programadas configuradas correctamente");
-  console.log(`📌 Notificación de transferencia: ${horaNotificacion}:00 todos los días`);
-  console.log("📌 Notificación de falta de evidencia: 08:00 todos los días");
-  console.log("✨ El sistema notificará automáticamente a los instructores cuando sus cursos terminen\n");
 
   // ⏰ TAREA 2: Notificar a administradores sobre instructores sin evidencia
   // Se ejecuta TODOS LOS DÍAS a las 08:00 (8 AM)

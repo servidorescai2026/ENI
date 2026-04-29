@@ -438,7 +438,6 @@ router.post("/register", verifyCaptcha, async (req, res) => {
 
 router.post("/login", verifyCaptcha, async (req, res) => {
   try {
-    console.log("BODY LOGIN:", req.body);
     const { email, password } = req.body;
     if (!email || !password)
       return res.status(400).json({ mensaje: "Correo y contraseña son requeridos" });

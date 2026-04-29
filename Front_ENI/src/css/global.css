@@ -336,13 +336,15 @@ footer a:hover {
 
 /* Navbar: Texto grande y centrado absoluto */
 .principal-navbar {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  width: 100%;
+  position: fixed; 
+  top: 0;          
   left: 0;
   right: 0;
-  z-index: 1030;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+  width: 100%;
+  z-index: 1000;
 }
 
 .titulo-principal-navbar {

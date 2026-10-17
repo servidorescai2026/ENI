@@ -2,6 +2,7 @@ import express from "express";
 import { Archivo, Usuario } from "../database/models/index.js";
 import verifyToken from "../middleware/verifyToken.js";
 import multer from "multer";
+import { QueryTypes } from "sequelize";
 
 
 const router = express.Router();
@@ -78,7 +79,7 @@ router.get("/stats/resumen", verifyToken, async (req, res) => {
 
     const stats = await Archivo.sequelize.query(
       `SELECT estado, COUNT(*) as cantidad FROM archivos GROUP BY estado`,
-      { type: "SELECT" }
+      { type: QueryTypes.SELECT }
     );
 
     res.status(200).json({

@@ -17,6 +17,7 @@ import fs from "fs";
 import path from "path";
 import { Op, QueryTypes } from "sequelize";
 import { sequelize } from "../database/config.js";
+import { uploadEvidenciasToDrive } from "../services/googleDrive.js";
 
 dotenv.config();
 const router = express.Router();

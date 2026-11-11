@@ -10,13 +10,19 @@ const dialect =
 
 const isProduction = process.env.NODE_ENV === "production";
 const sslRequired =
-  process.env.DB_SSL === "true" || (isProduction && dialect === "postgres");
+  process.env.DB_SSL === "true" ||
+  (isProduction && dialect === "postgres") ||
+  Boolean(process.env.DATABASE_URL);
+
+// Supabase usa certificados autofirmados en el pooler (aws-X-pooler.supabase.com)
+// Por tanto, rejectUnauthorized DEBE ser false a menos que se configure explícitamente como true.
+const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
 
 const dialectOptions = sslRequired
   ? {
       ssl: {
         require: true,
-        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true",
+        rejectUnauthorized: rejectUnauthorized,
       },
     }
   : {};

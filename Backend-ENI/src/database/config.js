@@ -18,17 +18,20 @@ const sslRequired =
 // Por tanto, rejectUnauthorized DEBE ser false a menos que se configure explícitamente como true.
 const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
 
-const dialectOptions = sslRequired
-  ? {
-      ssl: {
-        require: true,
-        rejectUnauthorized: rejectUnauthorized,
-      },
-    }
-  : {};
+// En Sequelize con PostgreSQL (librería pg), la configuración de SSL para Supabase
+// debe tener ssl: { require: true, rejectUnauthorized: false }
+const dialectOptions = {
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+  },
+};
 
-export const sequelize = process.env.DATABASE_URL
-  ? new Sequelize(process.env.DATABASE_URL, {
+// Limpiar cualquier parámetro de sslmode en la URL que pueda sobrescribir dialectOptions
+const cleanDatabaseUrl = (process.env.DATABASE_URL || "").replace(/[?&]sslmode=[^&]+/g, "");
+
+export const sequelize = cleanDatabaseUrl
+  ? new Sequelize(cleanDatabaseUrl, {
       dialect: "postgres",
       dialectModule: pg,
       dialectOptions,

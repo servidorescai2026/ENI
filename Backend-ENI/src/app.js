@@ -15,6 +15,9 @@ dotenv.config();
 
 const app = express();
 
+// Confiar en los proxies inversos (como el de Vercel/Cloudflare) para resolver la IP del cliente
+app.set("trust proxy", 1);
+
 // Seguridad con Helmet
 app.use(
   helmet({

@@ -12,6 +12,7 @@
     {
       "source": "/(.*)",
       "destination": "/Front_ENI/$1"
+      
     }
   ]
 }

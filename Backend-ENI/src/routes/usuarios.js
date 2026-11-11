@@ -63,15 +63,22 @@ const buildAuthPayload = async (user, forzarCambioPassword = false) => {
   };
 };
 
-const uploadDir = path.join(process.cwd(), "uploads", "notificaciones");
-const uploadDirEvidencias = path.join(process.cwd(), "uploads", "evidencias");
+import os from "os";
 
-// Crear carpetas si no existen
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-if (!fs.existsSync(uploadDirEvidencias)) {
-  fs.mkdirSync(uploadDirEvidencias, { recursive: true });
+const uploadBaseDir = process.env.VERCEL ? os.tmpdir() : process.cwd();
+const uploadDir = path.join(uploadBaseDir, "uploads", "notificaciones");
+const uploadDirEvidencias = path.join(uploadBaseDir, "uploads", "evidencias");
+
+// Crear carpetas si no existen (controlando errores de permisos en serverless)
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+  if (!fs.existsSync(uploadDirEvidencias)) {
+    fs.mkdirSync(uploadDirEvidencias, { recursive: true });
+  }
+} catch (err) {
+  console.warn("Aviso al crear carpetas de subida temporales:", err.message);
 }
 
 const storage = multer.diskStorage({

@@ -23,10 +23,19 @@ const canAccessUserFiles = (req, usuarioId) => {
   return req.usuario?.rol === "Administrador" || Number(req.usuario?.id) === Number(usuarioId);
 };
 
+import os from "os";
+
 // Configuración de multer
+const uploadRoot = process.env.VERCEL ? path.join(os.tmpdir(), "uploads") : "uploads/";
+try {
+  if (!fs.existsSync(uploadRoot)) {
+    fs.mkdirSync(uploadRoot, { recursive: true });
+  }
+} catch (_) {}
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/");
+    cb(null, uploadRoot);
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + "-" + file.originalname);

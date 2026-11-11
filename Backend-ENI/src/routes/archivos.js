@@ -24,6 +24,8 @@ const canAccessUserFiles = (req, usuarioId) => {
 };
 
 import os from "os";
+import path from "path";
+import fs from "fs";
 
 // Configuración de multer
 const uploadRoot = process.env.VERCEL ? path.join(os.tmpdir(), "uploads") : "uploads/";

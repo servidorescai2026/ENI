@@ -2,9 +2,11 @@ import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
 dotenv.config();
 
+import pg from "pg";
+
 const dialect =
   process.env.DB_DIALECT ||
-  (process.env.DATABASE_URL?.startsWith("postgres") ? "postgres" : "mysql");
+  (process.env.DATABASE_URL?.startsWith("mysql") ? "mysql" : "postgres");
 
 const isProduction = process.env.NODE_ENV === "production";
 const sslRequired =
@@ -21,7 +23,8 @@ const dialectOptions = sslRequired
 
 export const sequelize = process.env.DATABASE_URL
   ? new Sequelize(process.env.DATABASE_URL, {
-      dialect,
+      dialect: "postgres",
+      dialectModule: pg,
       dialectOptions,
       logging: process.env.DB_LOGGING === "true" ? console.log : false,
       pool: {
@@ -32,15 +35,14 @@ export const sequelize = process.env.DATABASE_URL
       },
     })
   : new Sequelize(
-      process.env.DB_NAME || "eni_db",
-      process.env.DB_USER || "root",
+      process.env.DB_NAME || "postgres",
+      process.env.DB_USER || "postgres",
       process.env.DB_PASS || "",
       {
         host: process.env.DB_HOST || "localhost",
-        port:
-          Number(process.env.DB_PORT) ||
-          (dialect === "postgres" ? 5432 : 3306),
-        dialect,
+        port: Number(process.env.DB_PORT) || 5432,
+        dialect: "postgres",
+        dialectModule: pg,
         dialectOptions,
         logging: process.env.DB_LOGGING === "true" ? console.log : false,
         pool: {
